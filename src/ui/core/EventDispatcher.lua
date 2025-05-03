@@ -29,25 +29,29 @@ end
 function EventDispatcher:dispatchEvent(event)
     assert(type(event) == "table", "Event must be a table")
 
-    -- Подготовка данных события
+    -- Инициализация события
     event.target = event.target or self
     event.currentTarget = self
     event.stopPropagation = function() event._stopped = true end
     event._stopped = false
 
-    -- Пропускаем обработку если элемент не видим или не активен
+    -- Проверка возможности обработки (с учетом родителей)
     if not self:canHandleEvent(event) then
         return false
     end
-    
-    
-    
+
+    -- Обработка слушателей текущего элемента
     local listeners = self._listeners[event.type]
     if listeners then
         for _, callback in ipairs(listeners) do
             callback(event)
             if event._stopped then break end
         end
+    end
+
+    -- Всплытие события к родителям (если не остановлено)
+    if not event._stopped and self.parent then
+        return self.parent:dispatchEvent(event)
     end
 
     return not event._stopped

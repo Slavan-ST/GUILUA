@@ -15,7 +15,6 @@ function love.load()
         textColor = {1, 1, 1, 1},
         onClick = function()
             DebugConsole.toggle()
-            DebugConsole.log("Консоль " .. (DebugConsole.visible and "открыта" or "скрыта"))
         end
     })
 

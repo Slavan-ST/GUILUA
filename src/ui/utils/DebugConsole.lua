@@ -109,7 +109,6 @@ end
 -- Управление консолью
 function DebugConsole.toggle()
     DebugConsole.visible = not DebugConsole.visible
-    DebugConsole.log("Console " .. (DebugConsole.visible and "shown" or "hidden"))
 end
 
 function DebugConsole.toggleDebug()

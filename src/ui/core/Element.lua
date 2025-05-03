@@ -26,16 +26,31 @@ end
 
 -- Обработка события
 function Element:handleEvent(event)
-    if event.x and event.y then
-        event.localX = event.x - self.x
-        event.localY = event.y - self.y
-        if not self:isInside(event.x, event.y) then
-            return false
-        end
+    -- Рассчитываем глобальные координаты с учетом родителей
+    local globalX, globalY = self:toGlobal(event.x, event.y)
+
+    -- Проверка попадания в элемент
+    if event.x and event.y and not self:isInside(globalX, globalY) then
+        return false  -- событие не попало в элемент
     end
 
-    -- Передаем событие в EventDispatcher для дальнейшей обработки
+    -- Обновляем локальные координаты относительно текущего элемента
+    event.localX = globalX - self.x
+    event.localY = globalY - self.y
+
+    -- Передаем событие в EventDispatcher
     return self:dispatchEvent(event)
+end
+
+-- Преобразует глобальные координаты с учетом иерархии
+function Element:toGlobal(x, y)
+    local node = self
+    while node.parent do
+        x = x + node.parent.x
+        y = y + node.parent.y
+        node = node.parent
+    end
+    return x, y
 end
 
 -- Добавление дочернего элемента
