@@ -108,6 +108,25 @@ function Element:draw()
     end
 end
 
+-- Устанавливает фокус на элемент (с учетом иерархии)
+function Element:setFocus()
+    local root = self:getRoot()
+    if root.setFocus then
+        root:setFocus(self)  -- делегируем UIManager
+    end
+end
+
+-- Возвращает текущий элемент с фокусом в поддереве
+function Element:getFocusedChild()
+    for _, child in ipairs(self.children) do
+        local focused = child:getFocusedChild()
+        if focused then
+            return focused
+        end
+    end
+    return self.hasFocus and self or nil
+end
+
 function Element:update(dt)
     if not self.enabled then return end
     --self:updateSelf(dt)

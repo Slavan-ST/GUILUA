@@ -72,12 +72,36 @@ function UIManager:handleEvent(event)
 end
 
 function UIManager:setFocus(element)
-    if self.focused and self.focused ~= element then
-        self.focused:dispatchEvent({ type = "focuslost" })
+    if self.focused == element then
+        return  -- уже в фокусе
     end
+
+    -- Снимаем фокус с предыдущего элемента и его родителей
+    if self.focused then
+        local oldFocus = self.focused
+        oldFocus.hasFocus = false
+        oldFocus:dispatchEvent({ type = "focuslost" })
+
+        -- Всплытие focuslost для родителей
+        local parent = oldFocus.parent
+        while parent do
+            parent:dispatchEvent({ type = "focuslost", bubbles = true })
+            parent = parent.parent
+        end
+    end
+
+    -- Устанавливаем фокус на новый элемент
     self.focused = element
     if element then
+        element.hasFocus = true
         element:dispatchEvent({ type = "focusgained" })
+
+        -- Всплытие focusgained для родителей
+        local parent = element.parent
+        while parent do
+            parent:dispatchEvent({ type = "focusgained", bubbles = true })
+            parent = parent.parent
+        end
     end
 end
 

@@ -27,33 +27,44 @@ end
 
 -- Диспетчеризация события
 function EventDispatcher:dispatchEvent(event)
+    -- Валидация входящего события
     assert(type(event) == "table", "Event must be a table")
+    assert(event.type, "Event must have a type")
 
-    -- Инициализация события
+    -- Инициализация свойств события
     event.target = event.target or self
     event.currentTarget = self
-    event.stopPropagation = function() event._stopped = true end
     event._stopped = false
+    event.stopPropagation = function() 
+        event._stopped = true 
+    end
 
-    -- Проверка возможности обработки (с учетом родителей)
+    -- Проверка возможности обработки события
     if not self:canHandleEvent(event) then
         return false
     end
 
-    -- Обработка слушателей текущего элемента
+    -- Обработка локальных слушателей
     local listeners = self._listeners[event.type]
     if listeners then
-        for _, callback in ipairs(listeners) do
-            callback(event)
-            if event._stopped then break end
+        -- Создаем копию списка слушателей на случай его изменения во время обработки
+        local listenersCopy = {unpack(listeners)}
+        for _, callback in ipairs(listenersCopy) do
+            if not event._stopped then
+                callback(event)
+            end
         end
     end
 
-    -- Всплытие события к родителям (если не остановлено)
-    if not event._stopped and self.parent then
-        return self.parent:dispatchEvent(event)
+    -- Обработка всплытия (если не было остановки)
+    if not event._stopped then
+
+        if self.parent and event.bubbles ~= false then
+             return self.parent:dispatchEvent(event)
+        end
     end
 
+    -- Возвращаем true, если событие не было остановлено
     return not event._stopped
 end
 
