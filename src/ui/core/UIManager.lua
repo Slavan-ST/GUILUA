@@ -12,15 +12,33 @@ end
 
 function UIManager:addElement(element)
     table.insert(self.elements, element)
-    self.sorted = false
+    self.needsSort = true  -- Флаг для отложенной сортировки
 end
 
 function UIManager:removeElement(element)
     for i, el in ipairs(self.elements) do
         if el == element then
             table.remove(self.elements, i)
+            self.needsSort = true
             break
         end
+    end
+end
+
+function UIManager:sortElements()
+    table.sort(self.elements, function(a, b)
+        return (a.zIndex or 0) < (b.zIndex or 0)
+    end)
+    self.needsSort = false
+end
+
+function UIManager:draw()
+    if self.needsSort then
+        self:sortElements()
+    end
+
+    for _, el in ipairs(self.elements) do
+        if el.draw then el:draw() end
     end
 end
 
@@ -37,14 +55,6 @@ function UIManager:update(dt)
     end
 end
 
-function UIManager:draw()
-    if not self.sorted then
-        self:sortByZIndex()
-    end
-    for _, el in ipairs(self.elements) do
-        if el.draw then el:draw() end
-    end
-end
 
 function UIManager:handleEvent(event)
     if not self.sorted then

@@ -79,8 +79,29 @@ function Element:hide() self.visible = false; return self end
 function Element:enable() self.enabled = true; return self end
 function Element:disable() self.enabled = false; return self end
 
+function Element:setZIndex(value)
+    self.zIndex = value or 0
+    if self.parent then
+        self.parent:sortChildren()
+    end
+end
+
+function Element:sortChildren()
+    table.sort(self.children, function(a, b)
+        return (a.zIndex or 0) < (b.zIndex or 0)
+    end)
+    -- Помечаем, что дети отсортированы
+    self._childrenSorted = true
+end
+
 function Element:draw()
     if not self.visible then return end
+
+    -- Сортируем детей, если нужно
+    if not self._childrenSorted then
+        self:sortChildren()
+    end
+
     self:drawSelf()
     for _, child in ipairs(self.children) do
         child:draw()
