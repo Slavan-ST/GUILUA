@@ -1,0 +1,24 @@
+📁 /
+    📄 merged_output.txt
+    📄 structure.txt
+    📄 .gitignore
+    📄 main.lua
+📁 src/
+    📁 ui/
+        📁 utils/
+            📄 BlueprintBuilder.lua
+            📄 UIStyle.lua
+        📁 core/
+            📄 UIManager.lua
+            📄 UIPool.lua
+            📄 UIEventDispatcher.lua
+            📄 Root.lua
+            📄 ContainerElement.lua
+            📄 LayeredManager.lua
+            📄 Element.lua
+        📁 elements/
+            📄 UILabel.lua
+            📄 UIButton.lua
+            📄 UIInputField.lua
+📁 lib/
+    📄 middleclass.lua

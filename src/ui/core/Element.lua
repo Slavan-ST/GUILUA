@@ -1,61 +1,28 @@
 local class = require("lib.middleclass")
+local UIEventDispatcher = require("src.ui.core.UIEventDispatcher")
 
 local Element = class("Element")
 
-
+-- Миксин для событий
+UIEventDispatcher:mixin(Element)
 
 function Element:initialize(x, y, w, h)
     self.x, self.y = x or 0, y or 0
     self.width, self.height = w or 0, h or 0
     self.visible = true
+    self.enabled = true
     self.parent = nil
     self.children = {}
-    self._listeners = {}
+    self._listeners = {} -- для совместимости (можно удалить после рефакторинга)
 end
 
--- Добавление события
-function Element:on(eventName, callback)
-    self._listeners[eventName] = self._listeners[eventName] or {}
-    table.insert(self._listeners[eventName], callback)
-end
+--- Базовые методы ---
 
--- Удаление события
-function Element:off(eventName, callback)
-    local list = self._listeners[eventName]
-    if not list then return end
-    for i = #list, 1, -1 do
-        if list[i] == callback then
-            table.remove(list, i)
-        end
-    end
-end
-
--- Вызов события
-function Element:trigger(eventName, ...)
-    local list = self._listeners[eventName]
-    if not list then return end
-    for _, callback in ipairs(list) do
-        callback(...)
-    end
-end
-
--- Базовая реализация: переопределяется в потомках
-function Element:handleEvent(eventName, ...)
-    if self[eventName] then
-        return self[eventName](self, ...)
-    end
-end
-
--- Вспомогательные функции
-function Element:isInside(x, y)
-    return x >= self.x and y >= self.y and x <= self.x + self.width and y <= self.y + self.height
-end
-
+-- Добавление/удаление дочерних элементов
 function Element:addChild(child)
     child.parent = self
     table.insert(self.children, child)
 end
-
 
 function Element:removeChild(child)
     for i, c in ipairs(self.children) do
@@ -68,65 +35,13 @@ function Element:removeChild(child)
 end
 
 function Element:clearChildren()
-    for _, c in ipairs(self.children) do
-        c.parent = nil
+    for _, child in ipairs(self.children) do
+        child.parent = nil
     end
     self.children = {}
 end
 
--- Отрисовка (рекурсивно)
-function Element:draw()
-    if not self.visible then return end
-    if self.onDraw then self:onDraw() end
-    for _, child in ipairs(self.children) do
-        child:draw()
-    end
-end
-
--- Обновление (рекурсивно)
-function Element:update(dt)
-    if not self.enabled then return end
-    if self.onUpdate then self:onUpdate(dt) end
-    for _, child in ipairs(self.children) do
-        child:update(dt)
-    end
-end
-
--- Обработка событий
-function Element:emit(eventName, ...)
-    local handler = self["on" .. eventName]
-    if handler then
-        local handled = handler(self, ...)
-        if handled then return true end
-    end
-
-    if self.parent then
-        if self.parent.emit then
-            return self.parent:emit(eventName, ...)
-        elseif self.parent.dispatch then
-            return self.parent:dispatch(eventName, ...)
-        end
-    end
-
-    return false
-end
-
-function Element:trigger(eventName, ...)
-    if not self._listeners or not self._listeners[eventName] then return end
-    for _, callback in ipairs(self._listeners[eventName]) do
-        callback(...)
-    end
-end
-
-function Element:onFocus() end
-function Element:onBlur() end
-function Element:focus()
-    if self.parent and self.parent.setFocus then
-        self.parent:setFocus(self)
-    end
-end
-
--- В классе Element
+-- Видимость
 function Element:show()
     self.visible = true
 end
@@ -139,48 +54,93 @@ function Element:isVisible()
     return self.visible
 end
 
-function Element:clearEventListeners()
-    self.eventListeners = {}
+-- Геометрия
+function Element:isInside(x, y)
+    return x >= self.x and y >= self.y and x <= self.x + self.width and y <= self.y + self.height
 end
 
-function Element:updateLayout()
-    -- Простейший пример: если в родителе есть автолейаут, перерассчитываем позицию.
-    if self.parent and self.parent.updateLayout then
-        self.parent:updateLayout()
+function Element:setPosition(x, y)
+    self.x, self.y = x, y
+end
+
+function Element:setSize(w, h)
+    self.width, self.height = w, h
+end
+
+--- Отрисовка и обновление ---
+-- (Базовые методы, которые можно переопределять)
+
+function Element:draw()
+    if not self.visible then return end
+    -- Переопределяется в потомках
+    for _, child in ipairs(self.children) do
+        child:draw()
     end
 end
 
-function Element:touchPressed(id, x, y, dx, dy, pressure)
-    if self:isInside(x, y) then
-        if self.onTouchPressed then
-            self:onTouchPressed(id, x, y, dx, dy, pressure)
+function Element:update(dt)
+    if not self.enabled then return end
+    -- Переопределяется в потомках
+    for _, child in ipairs(self.children) do
+        child:update(dt)
+    end
+end
+
+--- Обработка событий ---
+-- (Используем UIEventDispatcher вместо ручного управления)
+
+function Element:handleEvent(eventName, ...)
+    -- 1. Проверяем наличие специализированного обработчика вида "on{EventName}"
+    -- (например: onTouchPressed, onKeyReleased)
+    local handler = self["on" .. eventName]
+    if handler then
+        local result = handler(self, ...)
+        if result ~= nil then
+            return result -- Возвращаем результат, если обработчик явно вернул true/false
         end
-        self:trigger("touchPressed", id, x, y, dx, dy, pressure)
-        return true
     end
+
+    -- 2. Проверяем прямой метод события (для совместимости)
+    -- (например: touchPressed(), keyReleased())
+    local directHandler = self[eventName]
+    if directHandler then
+        local result = directHandler(self, ...)
+        if result ~= nil then
+            return result
+        end
+    end
+
+    -- 3. Если элемент имеет UIEventDispatcher (миксин), проверяем слушатели
+    if self._listeners and self._listeners[eventName] then
+        local stopped = self:dispatchEvent(eventName, ...)
+        if stopped then
+            return true
+        end
+    end
+
+    -- 4. Пробрасываем событие родителю (если есть и он поддерживает handleEvent)
+    if self.parent and self.parent.handleEvent then
+        return self.parent:handleEvent(eventName, ...)
+    end
+
+    -- 5. Событие не обработано
     return false
 end
 
-function Element:touchReleased(id, x, y, dx, dy, pressure)
-    if self:isInside(x, y) then
-        if self.onTouchReleased then
-            self:onTouchReleased(id, x, y, dx, dy, pressure)
-        end
-        self:trigger("touchReleased", id, x, y, dx, dy, pressure)
-        return true
+-- Фокус
+function Element:onFocus() end -- Переопределяется
+function Element:onBlur() end  -- Переопределяется
+
+function Element:focus()
+    if self.parent and self.parent.setFocus then
+        self.parent:setFocus(self)
     end
-    return false
 end
 
-function Element:touchMoved(id, x, y, dx, dy, pressure)
-    if self:isInside(x, y) then
-        if self.onTouchMoved then
-            self:onTouchMoved(id, x, y, dx, dy, pressure)
-        end
-        self:trigger("touchMoved", id, x, y, dx, dy, pressure)
-        return true
-    end
-    return false
-end
+--- Устаревшие методы (можно удалить после рефакторинга) ---
+-- (Их заменяет UIEventDispatcher)
+function Element:on(eventName, callback) end
+function Element:off(eventName, callback) end
+function Element:trigger(eventName, ...) end
 
 return Element

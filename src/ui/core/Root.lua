@@ -5,75 +5,51 @@ local Root = class("Root", Element)
 
 function Root:initialize(width, height)
     Element.initialize(self, 0, 0, width, height)
-    self.focusedElement = nil
-    self._layers = {
-        background = {},
-        default = {},
-        popup = {},
-        overlay = {}
-    }
+    self.focusedElement = nil  -- управление фокусом
+    self._layersEnabled = false -- если true, использует LayeredManager (опционально)
 end
 
-function Root:addToLayer(element, layer)
-    local target = self._layers[layer] or self._layers.default
-    table.insert(target, element)
-    element.parent = self
-end
-
-function Root:removeElement(element)
-    if self.focusedElement == element then
-        self:clearFocus()
-    end
-
-    for _, layer in pairs(self._layers) do
-        for i, e in ipairs(layer) do
-            if e == element then
-                table.remove(layer, i)
-                e.parent = nil
-                return
-            end
-        end
-    end
-end
-
-function Root:draw()
-    for _, layer in pairs(self._layers) do
-        for _, element in ipairs(layer) do
-            if element.visible and element.draw then
-                element:draw()
-            end
-        end
-    end
-end
-
-function Root:update(dt)
-    for _, layer in pairs(self._layers) do
-        for _, element in ipairs(layer) do
-            if element.visible and element.update then
-                element:update(dt)
-            end
-        end
-    end
-end
+-- В Root.lua, добавить после initialize:
 
 function Root:dispatch(eventName, ...)
-    for _, layer in pairs(self._layers) do
-        for i = #layer, 1, -1 do
-            local element = layer[i]
-            if element.visible and element.handleEvent and element:handleEvent(eventName, ...) then
-                return true
+    -- Обрабатываем события фокуса
+    if eventName == "keyPressed" then
+        return self:keypressed(...)
+    end
+    
+    -- Обрабатываем touch события
+    if eventName == "touchPressed" or eventName == "touchReleased" or eventName == "touchMoved" then
+        -- Здесь можно добавить логику обработки touch событий
+        -- Например, передать событие дочерним элементам
+        for _, child in ipairs(self.children) do
+            if child.visible and child[eventName] then
+                if child[eventName](child, ...) then
+                    return true -- Событие обработано
+                end
             end
         end
+        return false
     end
+    
+    -- Для других событий можно использовать UIEventDispatcher
+    if self._listeners and self._listeners[eventName] then
+        return self:dispatchEvent(eventName, ...)
+    end
+    
     return false
 end
 
+--- Управление фокусом ---
 function Root:setFocus(element)
     if self.focusedElement == element then return end
+
+    -- Снимаем фокус с предыдущего элемента
     if self.focusedElement and self.focusedElement.onBlur then
         self.focusedElement:onBlur()
         self.focusedElement.hasFocus = false
     end
+
+    -- Устанавливаем фокус на новый элемент
     self.focusedElement = element
     if element and element.onFocus then
         element:onFocus()
@@ -89,7 +65,7 @@ function Root:getFocus()
     return self.focusedElement
 end
 
-
+--- Обработка событий (переопределение) ---
 function Root:textinput(text)
     if self.focusedElement and self.focusedElement.textinput then
         self.focusedElement:textinput(text)
@@ -102,10 +78,40 @@ function Root:keypressed(key, scancode, isrepeat)
     end
 end
 
-function Root:keyreleased(key, scancode)
-    if self.focusedElement and self.focusedElement.keyreleased then
-        self.focusedElement:keyreleased(key, scancode)
+--- Добавление/удаление элементов ---
+-- (Теперь наследуется от Element, методы addChild/removeChild уже есть)
+
+--- Отключение слоев (переносим в LayeredManager) ---
+function Root:addToLayer(element, layer)
+    error("Root:addToLayer() deprecated. Use LayeredManager instead.")
+end
+
+function Root:removeElement(element)
+    -- Удаляем из детей (родительский метод)
+    self:removeChild(element)
+    -- Снимаем фокус, если элемент был в фокусе
+    if self.focusedElement == element then
+        self:clearFocus()
     end
 end
+
+function Root:touchPressed(id, x, y, dx, dy, pressure)
+    return self:dispatch("touchPressed", id, x, y, dx, dy, pressure)
+end
+
+function Root:touchReleased(id, x, y, dx, dy, pressure)
+    return self:dispatch("touchReleased", id, x, y, dx, dy, pressure)
+end
+
+function Root:touchMoved(id, x, y, dx, dy, pressure)
+    return self:dispatch("touchMoved", id, x, y, dx, dy, pressure)
+end
+
+function Root:keyPressed(key, scancode, isrepeat)
+    return self:dispatch("keyPressed", key, scancode, isrepeat)
+end
+
+--- Отрисовка и обновление (базовые методы из Element) ---
+-- (Не переопределяем, если не нужно особое поведение)
 
 return Root
