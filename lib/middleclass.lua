@@ -121,6 +121,8 @@ local function _includeMixin(aClass, mixin)
   return aClass
 end
 
+
+
 local DefaultMixin = {
   __tostring   = function(self) return "instance of " .. tostring(self.class) end,
 
@@ -136,6 +138,9 @@ local DefaultMixin = {
   end,
 
   static = {
+    typeof = function(self)
+            return self.name
+        end,
     allocate = function(self)
       assert(type(self) == 'table', "Make sure that you are using 'Class:allocate' instead of 'Class.allocate'")
       return setmetatable({ class = self }, self.__instanceDict)

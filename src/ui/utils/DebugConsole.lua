@@ -16,7 +16,20 @@ local DebugConsole = {
 }
 
 -- Логирование сообщений
-function DebugConsole.log(text)
+function DebugConsole.log(...)
+    local args = {...}
+    local text = ""
+    
+    -- Обрабатываем все аргументы
+    for i, arg in ipairs(args) do
+        if i > 1 then
+            text = text .. " " -- Разделитель между аргументами
+        end
+        text = text .. tostring(arg)
+    end
+    
+
+
     table.insert(DebugConsole.messages, 1, {
         text = tostring(text),
         time = love.timer.getTime()
