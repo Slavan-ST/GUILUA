@@ -13,6 +13,7 @@ function Button:initialize(x, y, w, h, text, options)
 
     self:addEventListener("touchpressed", function(event)
         if self:isInside(event.x, event.y) then
+            require("src.ui.utils.DebugConsole").log("press")
             self.pressed = true
         end
     end)

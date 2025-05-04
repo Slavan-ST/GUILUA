@@ -13,7 +13,7 @@ function ScrollView:initialize(x, y, w, h, options)
     self.maxScrollY = 0
     self.scrollBarVisible = false
     self.scrollBarSize = options.scrollBarSize or 10
-    self.scrollBarColor = options.scrollBarColor or {0.5, 0.5, 0.5, 0.7}
+    self.scrollBarColor = options.scrollBarColor or {0.1, 0.5, 0.5, 0.5}
     self.scrollBarMargin = options.scrollBarMargin or 2
     
     -- Для тач-событий и инерции
@@ -29,6 +29,8 @@ function ScrollView:initialize(x, y, w, h, options)
     self:addEventListener("touchmoved", function(e) return self:onTouchMoved(e) end)
     
     Element.addChild(self, self.content)
+    
+    require("src.ui.utils.DebugConsole").log( "Child: ".. tostring(#self.children))
 end
 
 function ScrollView:setContentSize(w, h)
@@ -94,6 +96,7 @@ function ScrollView:onTouchMoved(event)
 end
 
 function ScrollView:drawSelf()
+    
     self.content.height = self.contentHeight
   
     -- Включаем обрезку по области ScrollView
@@ -111,7 +114,7 @@ function ScrollView:drawSelf()
     
     -- Рисуем контент (все дочерние элементы content)
     -- Передаем 0,0 так как уже сделали трансляцию
-    self.content:drawSelf()
+    self.content:draw()
     
     -- Восстанавливаем настройки графики
     love.graphics.pop()
@@ -136,6 +139,7 @@ end
 
 -- Методы для работы с дочерними элементами
 function ScrollView:addChild(child)
+    
     self.content:addChild(child)
     self:updateScrollLimits()
 end

@@ -4,1004 +4,438 @@
 
 local UIManager = require("src.ui.core.UIManager")
 local UIButton = require("src.ui.elements.UIButton")
-local UILabel = require("src.ui.elements.UILabel")
-local LayeredManager = require("src.ui.core.LayeredManager")
+local Fonts = require("src.ui.fonts.init")
+local DebugConsole = require("src.ui.utils.DebugConsole")
+local ScrollView = require("src.ui.elements.ScrollView")
+local Label = require("src.ui.elements.Label")
+
+local ui = UIManager:new()
+
 
 function love.load()
-    -- Получаем экземпляр UIManager
-    local ui = UIManager.getInstance()
-    ui:init(love.graphics.getWidth(), love.graphics.getHeight())
+    Fonts.load()
+    love.graphics.setFont(Fonts.default)
     
-    -- Получаем layeredManager для прямого добавления элементов
-    local layeredManager = ui.layeredManager
     
-    -- Создаем элементы
-    local title = UILabel(20, 20, "GUI System Demo", {
-        font = love.graphics.newFont(24),
-        textColor = {1, 1, 1, 1}
-    })
     
-    local testButton = UIButton(20, 80, 200, 50, "Click Me!", {
-        backgroundColor = {0.2, 0.6, 0.2, 1},
-        onClick = function(self)
-            print("Button clicked!")
+    -- Создаем ScrollView с явным указанием options
+    local scrollView = ScrollView:new(
+        100, 
+        100, 
+        love.graphics.getWidth() - 200, 
+        love.graphics.getHeight() - 200, 
+        {
+            zIndex = 1,
+            scrollBarSize = 10,
+            scrollBarColor = {0.1, 0.5, 0.2, 0.1}
+        }
+    )
+    
+    scrollView:setContentSize(love.graphics.getWidth() - 100, 2000)
+    
+    local Element = require("src.ui.core.Element")
+        -- Добавьте это в love.load() после создания scrollView
+    local testRect = Element:new(10, 10, 100, 50, {backgroundColor = {0,0.5,1,1}})
+    scrollView:addChild(testRect)
+    
+    -- Добавляем тестовые элементы
+    
+    for i = 1, 50 do
+
+        
+        -- Создаем Label для текста
+        local label = Label:new(
+            10, 15,                      -- x, y (относительно item)
+            "Элемент "..i,               -- текст
+            {1,1,1,1},                -- цвет (белый)
+            {                            -- опции
+                zIndex = 1000,
+                align = "left",
+                wrap = true,
+                
+            }
+        )
+        
+
+        
+        -- Добавляем элемент в scrollView
+        scrollView:addChild(label)
+    end
+    
+    ui:addElement(scrollView)
+    
+
+    
+    
+    
+    
+
+    -- Кнопка консоли
+    local consoleBtn = UIButton(love.graphics.getWidth() - 210, 10, 200, 40, "КОНСОЛЬ", {
+        backgroundColor = {0.3, 0.3, 0.8, 1},
+        textColor = {1, 1, 1, 1},
+        onClick = function()
+            DebugConsole.toggle()
         end
     })
 
-    -- Добавляем элементы напрямую в layeredManager
-    layeredManager:addElementToLayer(title, "default")
-    layeredManager:addElementToLayer(testButton, "default")
-    
-    -- Отладочный вывод
-    print("UI elements added to layeredManager")
-    print("Title visible:", title.visible)
-    print("Button visible:", testButton.visible)
+    -- Тестовая кнопка
+    local testBtn = UIButton(50, 400, 200, 60, "ТЕСТ", {
+        backgroundColor = {0.2, 0.7, 0.2, 1},
+        textColor = {1, 1, 1, 1},
+        onClick = function()
+            DebugConsole.log("Нажата тестовая кнопка")
+            testBtn:setBackgroundColor(0.8, 0.2, 0.2, 1)
+        end,
+        zIndex = 1
+    })
+
+    ui:addElement(consoleBtn)
+    ui:addElement(testBtn)
+
+    DebugConsole.log("UI инициализирован через UIManager")
 end
 
 function love.update(dt)
-    UIManager.getInstance():update(dt)
+    ui:update(dt)
+    if DebugConsole.update then DebugConsole.update(dt) end
 end
 
 function love.draw()
-    -- Очистка экрана
     love.graphics.clear(0.1, 0.1, 0.15)
-    
-    -- Отрисовка UI через UIManager
-    UIManager.getInstance():draw()
-    
-    -- Отладочная информация
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.print("GUI Test Running", 10, love.graphics.getHeight() - 30)
+    ui:draw()
+    DebugConsole.draw()
 end
 
-function love.resize(w, h)
-    UIManager.getInstance():init(w, h)
+-- TOUCH (Android)
+function love.touchpressed(id, x, y, dx, dy, pressure)
+    ui:handleEvent({ type = "touchpressed", id = id, x = x, y = y, dx = dx, dy = dy, pressure = pressure })
+end
+
+function love.touchreleased(id, x, y, dx, dy, pressure)
+    ui:handleEvent({ type = "touchreleased", id = id, x = x, y = y, dx = dx, dy = dy, pressure = pressure })
+end
+
+function love.touchmoved(id, x, y, dx, dy, pressure)
+    ui:handleEvent({ type = "touchmoved", id = id, x = x, y = y, dx = dx, dy = dy, pressure = pressure })
 end
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/main.lua ====
-
-
-
--- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/ContainerElement.lua ====
-
-local class = require("lib.middleclass")
-local Element = require("src.ui.core.Element")
-
-local ContainerElement = class("ContainerElement", Element)
-
-function ContainerElement:initialize(x, y, w, h)
-    Element.initialize(self, x, y, w, h)
-end
-
-function ContainerElement:addChild(child)
-    Element.addChild(self, child)
-end
-
-function ContainerElement:removeChild(child)
-    Element.removeChild(self, child)
-end
-
-function ContainerElement:update(dt)
-    if not self.visible then return end
-    if self.onUpdate then self:onUpdate(dt) end
-    for _, child in ipairs(self.children) do
-        if child.update then
-            child:update(dt)
-        end
-    end
-end
-
-function ContainerElement:draw()
-    if not self.visible then return end
-    if self.onDraw then self:onDraw() end
-    for _, child in ipairs(self.children) do
-        if child.draw then
-            child:draw()
-        end
-    end
-end
-
--- Пробрасываем касания детям
-function ContainerElement:touchPressed(id, x, y, dx, dy, pressure)
-    for i = #self.children, 1, -1 do
-        local child = self.children[i]
-        if child.touchPressed and child:touchPressed(id, x, y, dx, dy, pressure) then
-            return true
-        end
-    end
-    return false
-end
-
-function ContainerElement:touchReleased(id, x, y, dx, dy, pressure)
-    for i = #self.children, 1, -1 do
-        local child = self.children[i]
-        if child.touchReleased and child:touchReleased(id, x, y, dx, dy, pressure) then
-            return true
-        end
-    end
-    return false
-end
-
-function ContainerElement:touchMoved(id, x, y, dx, dy, pressure)
-    for i = #self.children, 1, -1 do
-        local child = self.children[i]
-        if child.touchMoved and child:touchMoved(id, x, y, dx, dy, pressure) then
-            return true
-        end
-    end
-    return false
-end
-
-return ContainerElement
--- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/ContainerElement.lua ====
 
 
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/Element.lua ====
 
 local class = require("lib.middleclass")
+local EventDispatcher = require("src.ui.core.EventDispatcher")
+
+-- Подключаем миксины
+local Hierarchy = require("src.ui.core.mixins.Hierarchy")
+local Visibility = require("src.ui.core.mixins.Visibility")
+local Geometry = require("src.ui.core.mixins.Geometry")
+local ZIndex = require("src.ui.core.mixins.ZIndex")
+local Interactivity = require("src.ui.core.mixins.Interactivity")
+local ContentLayout = require("src.ui.core.mixins.ContentLayout")
 
 local Element = class("Element")
+EventDispatcher.mixin(Element)
 
 
 
-function Element:initialize(x, y, w, h)
-    self.x, self.y = x or 0, y or 0
-    self.width, self.height = w or 0, h or 0
-    self.visible = true
-    self.parent = nil
-    self.children = {}
-    self._listeners = {}
+
+local class = require("lib.middleclass")
+local EventDispatcher = require("src.ui.core.EventDispatcher")
+
+Element.static.mixins = {Hierarchy, Visibility, Geometry, ZIndex, Interactivity, ContentLayout}
+
+function Element:initialize(x, y, w, h, options)
+    self:initMixins()
+    self.x = x or 0
+    self.y = y or 0
+    self.width = w or 0
+    self.height = h or 0
+    self.zIndex = options and options.zIndex or 0
+    
+
+
 end
 
--- Добавление события
-function Element:on(eventName, callback)
-    self._listeners[eventName] = self._listeners[eventName] or {}
-    table.insert(self._listeners[eventName], callback)
-end
-
--- Удаление события
-function Element:off(eventName, callback)
-    local list = self._listeners[eventName]
-    if not list then return end
-    for i = #list, 1, -1 do
-        if list[i] == callback then
-            table.remove(list, i)
+function Element:initMixins()
+  for _, mixin in ipairs(Element.static.mixins) do
+        if mixin.init then
+            mixin.init(self)  -- Инициализация каждого миксина
+        end
+        -- Также добавляем методы из миксинов в текущий объект
+        for k, v in pairs(mixin) do
+            if not self[k] then
+                self[k] = v  -- Только если метод еще не существует
+            end
         end
     end
+
+    EventDispatcher.initialize(self)
 end
 
--- Вызов события
-function Element:trigger(eventName, ...)
-    local list = self._listeners[eventName]
-    if not list then return end
-    for _, callback in ipairs(list) do
-        callback(...)
-    end
+-- Обработка события
+function Element:handleEvent(event)
+-- Рассчитываем глобальные координаты с учетом родителей
+local globalX, globalY = self:toGlobal(event.x, event.y)
+
+-- Проверка попадания в элемент 
+if event.x and event.y and not self:isInside(globalX, globalY) then return false -- событие не попало в элемент 
+end -- Обновляем локальные координаты относительно текущего элемента 
+event.localX = globalX - self.x event.localY = globalY - self.y -- Передаем событие в EventDispatcher 
+return self:dispatchEvent(event) 
+
 end
 
--- Базовая реализация: переопределяется в потомках
-function Element:handleEvent(eventName, ...)
-    if self[eventName] then
-        return self[eventName](self, ...)
-    end
-end
-
--- Вспомогательные функции
-function Element:isInside(x, y)
-    return x >= self.x and y >= self.y and x <= self.x + self.width and y <= self.y + self.height
-end
-
-function Element:addChild(child)
-    child.parent = self
-    table.insert(self.children, child)
-end
-
-
-function Element:removeChild(child)
-    for i, c in ipairs(self.children) do
-        if c == child then
-            table.remove(self.children, i)
-            c.parent = nil
-            break
-        end
-    end
-end
-
-function Element:clearChildren()
-    for _, c in ipairs(self.children) do
-        c.parent = nil
-    end
-    self.children = {}
-end
-
--- Отрисовка (рекурсивно)
 function Element:draw()
     if not self.visible then return end
-    if self.onDraw then self:onDraw() end
-    for _, child in ipairs(self.children) do
-        child:draw()
-    end
-end
 
--- Обновление (рекурсивно)
-function Element:update(dt)
-    if not self.enabled then return end
-    if self.onUpdate then self:onUpdate(dt) end
-    for _, child in ipairs(self.children) do
-        child:update(dt)
-    end
-end
+    love.graphics.setColor(0.7, 0.6, 0.4, 1) -- hsl(256,66.6%,48.1%)
+    love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
+    
 
--- Обработка событий
-function Element:emit(eventName, ...)
-    local handler = self["on" .. eventName]
-    if handler then
-        local handled = handler(self, ...)
-        if handled then return true end
+    if not self._childrenSorted then
+        self:sortChildren()
     end
+    
+    
+    self:drawSelf()
 
-    if self.parent then
-        if self.parent.emit then
-            return self.parent:emit(eventName, ...)
-        elseif self.parent.dispatch then
-            return self.parent:dispatch(eventName, ...)
+    -- Рисуем дочерние элементы
+    if self.children then
+        
+        for _, child in ipairs(self.children) do
+          
+            require("src.ui.utils.DebugConsole").log("draw", child.x, child.y, child.width, child.height)
+            
+            self.updateContentSize()
+            child:draw()
+            
         end
     end
-
-    return false
 end
 
-function Element:trigger(eventName, ...)
-    if not self._listeners or not self._listeners[eventName] then return end
-    for _, callback in ipairs(self._listeners[eventName]) do
-        callback(...)
-    end
+function Element:drawSelf()
+  print("test")
 end
 
-function Element:onFocus() end
-function Element:onBlur() end
-function Element:focus()
-    if self.parent and self.parent.setFocus then
-        self.parent:setFocus(self)
-    end
-end
-
--- В классе Element
-function Element:show()
-    self.visible = true
-end
-
-function Element:hide()
-    self.visible = false
-end
-
-function Element:isVisible()
-    return self.visible
-end
-
-function Element:clearEventListeners()
-    self.eventListeners = {}
-end
-
-function Element:updateLayout()
-    -- Простейший пример: если в родителе есть автолейаут, перерассчитываем позицию.
-    if self.parent and self.parent.updateLayout then
-        self.parent:updateLayout()
-    end
-end
-
-function Element:touchPressed(id, x, y, dx, dy, pressure)
-    if self:isInside(x, y) then
-        if self.onTouchPressed then
-            self:onTouchPressed(id, x, y, dx, dy, pressure)
-        end
-        self:trigger("touchPressed", id, x, y, dx, dy, pressure)
-        return true
-    end
-    return false
-end
-
-function Element:touchReleased(id, x, y, dx, dy, pressure)
-    if self:isInside(x, y) then
-        if self.onTouchReleased then
-            self:onTouchReleased(id, x, y, dx, dy, pressure)
-        end
-        self:trigger("touchReleased", id, x, y, dx, dy, pressure)
-        return true
-    end
-    return false
-end
-
-function Element:touchMoved(id, x, y, dx, dy, pressure)
-    if self:isInside(x, y) then
-        if self.onTouchMoved then
-            self:onTouchMoved(id, x, y, dx, dy, pressure)
-        end
-        self:trigger("touchMoved", id, x, y, dx, dy, pressure)
-        return true
-    end
-    return false
-end
 
 return Element
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/Element.lua ====
 
 
 
--- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/LayeredManager.lua ====
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/EventDispatcher.lua ====
 
-local middleclass = require("lib.middleclass")
+local EventDispatcher = {}
 
-local LayeredManager = middleclass("LayeredManager")
-
-function LayeredManager:initialize()
-    self.layers = {
-        background = {},
-        default = {},
-        popups = {},
-        overlay = {},
-    }
-    self.layerOrder = { "background", "default", "popups", "overlay" }
-    self.zIndex = {}
+function EventDispatcher:initialize()
+    self._listeners = {}  -- Слушатели для текущего элемента
 end
 
-function LayeredManager:addElementToLayer(element, layer)
-    if self.layers[layer] then
-        table.insert(self.layers[layer], element)
+-- Добавление слушателя
+function EventDispatcher:addEventListener(eventType, callback)
+    assert(type(callback) == "function", "Callback must be a function")
+    if not self._listeners[eventType] then
+        self._listeners[eventType] = {}
     end
+    table.insert(self._listeners[eventType], callback)
 end
 
-function LayeredManager:bringToFront(element)
-    for layer, elements in pairs(self.layers) do
-        for i, el in ipairs(elements) do
-            if el == element then
-                table.remove(elements, i)
-                table.insert(self.layers[layer], element)
-                return
-            end
-        end
-    end
-end
-
-function LayeredManager:setZIndex(element, zIndex)
-    self.zIndex[element] = zIndex
-end
-
-function LayeredManager:getSortedElements()
-    local sorted = {}
-    for _, layer in ipairs(self.layerOrder) do
-        local elements = self.layers[layer]
-        for _, el in ipairs(elements) do
-            table.insert(sorted, el)
-        end
-    end
-    table.sort(sorted, function(a, b)
-        return (self.zIndex[a] or 0) < (self.zIndex[b] or 0)
-    end)
-    return sorted
-end
-
-function LayeredManager:update(dt)
-    for _, el in ipairs(self:getSortedElements()) do
-        if el.update then el:update(dt) end
-    end
-end
-
-function LayeredManager:draw()
-    for _, el in ipairs(self:getSortedElements()) do
-        if el.visible ~= false and el.draw then
-            el:draw()
-        end
-    end
-end
-
-function LayeredManager:handleTouchPressed(id, x, y, dx, dy, pressure)
-    for i = #self.layerOrder, 1, -1 do -- от верхнего слоя к нижнему
-        local elements = self.layers[self.layerOrder[i]]
-        for j = #elements, 1, -1 do
-            local el = elements[j]
-            if el.touchPressed and el:touchPressed(id, x, y, dx, dy, pressure) then
-                return true -- остановить дальше
-            end
-        end
-    end
-end
-
-function LayeredManager:handleTouchReleased(id, x, y, dx, dy, pressure)
-    for i = #self.layerOrder, 1, -1 do
-        local elements = self.layers[self.layerOrder[i]]
-        for j = #elements, 1, -1 do
-            local el = elements[j]
-            if el.touchReleased and el:touchReleased(id, x, y, dx, dy, pressure) then
-                return true
-            end
-        end
-    end
-end
-
-function LayeredManager:handleTouchMoved(id, x, y, dx, dy, pressure)
-    for i = #self.layerOrder, 1, -1 do
-        local elements = self.layers[self.layerOrder[i]]
-        for j = #elements, 1, -1 do
-            local el = elements[j]
-            if el.touchMoved and el:touchMoved(id, x, y, dx, dy, pressure) then
-                return true
-            end
-        end
-    end
-end
-
-return LayeredManager
--- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/LayeredManager.lua ====
-
-
-
--- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/Root.lua ====
-
-local class = require("lib.middleclass")
-local Element = require("src.ui.core.Element")
-
-local Root = class("Root", Element)
-
-function Root:initialize(width, height)
-    Element.initialize(self, 0, 0, width, height)
-    self.focusedElement = nil
-    self._layers = {
-        background = {},
-        default = {},
-        popup = {},
-        overlay = {}
-    }
-end
-
-function Root:addToLayer(element, layer)
-    local target = self._layers[layer] or self._layers.default
-    table.insert(target, element)
-    element.parent = self
-end
-
-function Root:removeElement(element)
-    if self.focusedElement == element then
-        self:clearFocus()
-    end
-
-    for _, layer in pairs(self._layers) do
-        for i, e in ipairs(layer) do
-            if e == element then
-                table.remove(layer, i)
-                e.parent = nil
-                return
-            end
-        end
-    end
-end
-
-function Root:draw()
-    for _, layer in pairs(self._layers) do
-        for _, element in ipairs(layer) do
-            if element.visible and element.draw then
-                element:draw()
-            end
-        end
-    end
-end
-
-function Root:update(dt)
-    for _, layer in pairs(self._layers) do
-        for _, element in ipairs(layer) do
-            if element.visible and element.update then
-                element:update(dt)
-            end
-        end
-    end
-end
-
-function Root:dispatch(eventName, ...)
-    for _, layer in pairs(self._layers) do
-        for i = #layer, 1, -1 do
-            local element = layer[i]
-            if element.visible and element.handleEvent and element:handleEvent(eventName, ...) then
-                return true
-            end
-        end
-    end
-    return false
-end
-
-function Root:setFocus(element)
-    if self.focusedElement == element then return end
-    if self.focusedElement and self.focusedElement.onBlur then
-        self.focusedElement:onBlur()
-        self.focusedElement.hasFocus = false
-    end
-    self.focusedElement = element
-    if element and element.onFocus then
-        element:onFocus()
-        element.hasFocus = true
-    end
-end
-
-function Root:clearFocus()
-    self:setFocus(nil)
-end
-
-function Root:getFocus()
-    return self.focusedElement
-end
-
-
-function Root:textinput(text)
-    if self.focusedElement and self.focusedElement.textinput then
-        self.focusedElement:textinput(text)
-    end
-end
-
-function Root:keypressed(key, scancode, isrepeat)
-    if self.focusedElement and self.focusedElement.keypressed then
-        self.focusedElement:keypressed(key, scancode, isrepeat)
-    end
-end
-
-function Root:keyreleased(key, scancode)
-    if self.focusedElement and self.focusedElement.keyreleased then
-        self.focusedElement:keyreleased(key, scancode)
-    end
-end
-
-return Root
--- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/Root.lua ====
-
-
-
--- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/UIEventDispatcher.lua ====
-
-local class = require("lib.middleclass")
-
-local UIEventDispatcher = class("UIEventDispatcher")
-
-function UIEventDispatcher:initialize()
-    self._listeners = {}
-end
-
--- Добавление слушателя события
-function UIEventDispatcher:addEventListener(eventType, callback, context)
-    self._listeners[eventType] = self._listeners[eventType] or {}
-    table.insert(self._listeners[eventType], {callback = callback, context = context})
-    return callback -- возвращаем для возможности удаления
-end
-
--- Удаление слушателя события
-function UIEventDispatcher:removeEventListener(eventType, callback)
+-- Удаление слушателя
+function EventDispatcher:removeEventListener(eventType, callback)
     local listeners = self._listeners[eventType]
-    if not listeners then return false end
-    
+    if not listeners then return end
     for i = #listeners, 1, -1 do
-        if listeners[i].callback == callback then
+        if listeners[i] == callback then
             table.remove(listeners, i)
-            return true
+            break
         end
     end
-    
-    return false
 end
 
--- Удаление всех слушателей конкретного события
-function UIEventDispatcher:removeEventListeners(eventType)
-    if eventType then
-        self._listeners[eventType] = nil
-    else
-        self._listeners = {}
+-- Диспетчеризация события
+function EventDispatcher:dispatchEvent(event)
+    -- Валидация входящего события
+    assert(type(event) == "table", "Event must be a table")
+    assert(event.type, "Event must have a type")
+
+    -- Инициализация свойств события
+    event.target = event.target or self
+    event.currentTarget = self
+    event._stopped = false
+    event.stopPropagation = function() 
+        event._stopped = true 
     end
-end
 
--- Проверка наличия слушателей для события
-function UIEventDispatcher:hasEventListener(eventType)
-    return self._listeners[eventType] ~= nil and #self._listeners[eventType] > 0
-end
-
--- Вызов события
-function UIEventDispatcher:dispatchEvent(eventType, ...)
-    local listeners = self._listeners[eventType]
-    if not listeners then return false end
-    
-    local result = false
-    for _, listener in ipairs(listeners) do
-        if listener.context then
-            listener.callback(listener.context, ...)
-        else
-            listener.callback(...)
-        end
-        result = true
+    -- Проверка возможности обработки события
+    if not self:canHandleEvent(event) then
+        return false
     end
-    
-    return result
-end
 
--- Создание смешанного класса, добавляющего функциональность событий
-function UIEventDispatcher:mixin(targetClass)
-    for k, v in pairs(UIEventDispatcher.class.__instanceDict) do
-        if k ~= "initialize" and k ~= "class" and k ~= "__mixins" then
-            targetClass.__instanceDict[k] = v
+    -- Обработка локальных слушателей
+    local listeners = self._listeners[event.type]
+    if listeners then
+        -- Создаем копию списка слушателей на случай его изменения во время обработки
+        local listenersCopy = {unpack(listeners)}
+        for _, callback in ipairs(listenersCopy) do
+            if not event._stopped then
+                callback(event)
+            end
         end
     end
-    
-    -- Расширяем initialize для наследников
-    local originalInitialize = targetClass.initialize
-    targetClass.initialize = function(self, ...)
-        if originalInitialize then
-            originalInitialize(self, ...)
+
+    -- Обработка всплытия (если не было остановки)
+    if not event._stopped then
+
+        if self.parent and event.bubbles ~= false then
+             return self.parent:dispatchEvent(event)
         end
-        self._listeners = {}
+    end
+
+    -- Возвращаем true, если событие не было остановлено
+    return not event._stopped
+end
+
+-- Метод для добавления миксина
+function EventDispatcher.mixin(target)
+    target.initialize = EventDispatcher._wrapInit(target.initialize)
+    for k, v in pairs(EventDispatcher) do
+        if k ~= "mixin" and k ~= "_wrapInit" then
+            target[k] = v
+        end
     end
 end
 
-return UIEventDispatcher
--- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/UIEventDispatcher.lua ====
+-- Обёртка для инициализации
+function EventDispatcher._wrapInit(origInit)
+    return function(self, ...)
+        if origInit then origInit(self, ...) end
+        EventDispatcher.initialize(self)
+    end
+end
+
+-- Проверка, можно ли обработать событие
+function EventDispatcher:canHandleEvent(event)
+    return self.visible and self.enabled  -- проверка видимости и активности
+end
+
+return EventDispatcher
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/EventDispatcher.lua ====
 
 
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/UIManager.lua ====
 
-local class = require("lib.middleclass")
-local Root = require("src.ui.core.Root")
-local LayeredManager = require("src.ui.core.LayeredManager")
+local UIManager = {}
+UIManager.__index = UIManager
 
-local UIManager = class("UIManager")
-UIManager.isInit = false
--- Синглтон для удобного доступа
-local instance = nil
-
-function UIManager.getInstance()
-    if not instance then
-        instance = UIManager()
-    end
-    
-    
-    return instance
+function UIManager:new()
+    local obj = {
+        elements = {},
+        sorted = false
+    }
+    setmetatable(obj, self)
+    return obj
 end
 
-function UIManager:initialize()
-    UIManager.isInit = true
-    self.root = nil
-    self.layeredManager = nil
-    self.width = 0
-    self.height = 0
-    self.scale = 1
-    self.screens = {}
-    self.currentScreen = nil
-    self.touchHandlers = {}
-    self.keyboardHandlers = {}
-    self.mouseHandlers = {}
+function UIManager:addElement(element)
+    table.insert(self.elements, element)
+    self.needsSort = true  -- Флаг для отложенной сортировки
 end
 
--- Инициализация с размерами экрана
-function UIManager:init(width, height)
-  
-    
-    self.width = width or love.graphics.getWidth()
-    self.height = height or love.graphics.getHeight()
-    
-    self.root = Root(self.width, self.height)
-    self.layeredManager = LayeredManager()
-    
-function love.load()
-    local ui = UIManager.getInstance()
-    ui:init(800, 600)
-    
-    -- Просто создаем кнопку без сложной иерархии
-    local testButton = UIButton(100, 100, 200, 50, "Test Button", {
-        backgroundColor = {1, 0, 0, 1}
-    })
-    
-    -- Добавляем прямо в root
-    ui.root:addChild(testButton)
-    
-    print("Button added directly to root")
-end
-
-function love.draw()
-    love.graphics.clear(0.1, 0.1, 0.2)
-    UIManager.getInstance():draw()
-end
-    
-    -- Обработчики событий LÖVE
-    love.touchpressed = function(id, x, y, dx, dy, pressure)
-        self:handleTouchPressed(id, x, y, dx, dy, pressure)
-    end
-    
-    love.touchreleased = function(id, x, y, dx, dy, pressure)
-        self:handleTouchReleased(id, x, y, dx, dy, pressure)
-    end
-    
-    love.touchmoved = function(id, x, y, dx, dy, pressure)
-        self:handleTouchMoved(id, x, y, dx, dy, pressure)
-    end
-    
-    love.keypressed = function(key, scancode, isrepeat)
-        self:handleKeyPressed(key, scancode, isrepeat)
-    end
-    
-    love.keyreleased = function(key, scancode)
-        self:handleKeyReleased(key, scancode)
-    end
-    
-    love.textinput = function(text)
-        self:handleTextInput(text)
-    end
-end
-
--- Обработка событий касания
-function UIManager:handleTouchPressed(id, x, y, dx, dy, pressure)
-    local handled = false
-    
-    -- Сначала проверяем LayeredManager
-    if self.layeredManager then
-        handled = self.layeredManager:handleTouchPressed(id, x, y, dx, dy, pressure)
-    end
-    
-    -- Если не обработано, проверяем Root
-    if not handled and self.root then
-        handled = self.root:dispatch("touchPressed", id, x, y, dx, dy, pressure)
-    end
-    
-    -- Если не обработано, проверяем текущий экран
-    if not handled and self.currentScreen then
-        if self.currentScreen.touchPressed then
-            handled = self.currentScreen:touchPressed(id, x, y, dx, dy, pressure)
-        end
-    end
-    
-    -- Дополнительные обработчики
-    for _, handler in ipairs(self.touchHandlers) do
-        if handler.onTouchPressed then
-            handler:onTouchPressed(id, x, y, dx, dy, pressure)
-        end
-    end
-    
-    return handled
-end
-
-function UIManager:handleTouchReleased(id, x, y, dx, dy, pressure)
-    local handled = false
-    
-    if self.layeredManager then
-        handled = self.layeredManager:handleTouchReleased(id, x, y, dx, dy, pressure)
-    end
-    
-    if not handled and self.root then
-        handled = self.root:dispatch("touchReleased", id, x, y, dx, dy, pressure)
-    end
-    
-    if not handled and self.currentScreen then
-        if self.currentScreen.touchReleased then
-            handled = self.currentScreen:touchReleased(id, x, y, dx, dy, pressure)
-        end
-    end
-    
-    for _, handler in ipairs(self.touchHandlers) do
-        if handler.onTouchReleased then
-            handler:onTouchReleased(id, x, y, dx, dy, pressure)
-        end
-    end
-    
-    return handled
-end
-
-function UIManager:handleTouchMoved(id, x, y, dx, dy, pressure)
-    local handled = false
-    
-    if self.layeredManager then
-        handled = self.layeredManager:handleTouchMoved(id, x, y, dx, dy, pressure)
-    end
-    
-    if not handled and self.root then
-        handled = self.root:dispatch("touchMoved", id, x, y, dx, dy, pressure)
-    end
-    
-    if not handled and self.currentScreen then
-        if self.currentScreen.touchMoved then
-            handled = self.currentScreen:touchMoved(id, x, y, dx, dy, pressure)
-        end
-    end
-    
-    for _, handler in ipairs(self.touchHandlers) do
-        if handler.onTouchMoved then
-            handler:onTouchMoved(id, x, y, dx, dy, pressure)
-        end
-    end
-    
-    return handled
-end
-
--- Обработка ввода с клавиатуры
-function UIManager:handleKeyPressed(key, scancode, isrepeat)
-    local handled = false
-    
-    if self.root then
-        if self.root.keypressed then
-            handled = self.root:keypressed(key, scancode, isrepeat)
-        end
-    end
-    
-    if not handled and self.currentScreen then
-        if self.currentScreen.keypressed then
-            handled = self.currentScreen:keypressed(key, scancode, isrepeat)
-        end
-    end
-    
-    for _, handler in ipairs(self.keyboardHandlers) do
-        if handler.onKeyPressed then
-            handler:onKeyPressed(key, scancode, isrepeat)
-        end
-    end
-    
-    return handled
-end
-
-function UIManager:handleKeyReleased(key, scancode)
-    local handled = false
-    
-    if self.root then
-        if self.root.keyreleased then
-            handled = self.root:keyreleased(key, scancode)
-        end
-    end
-    
-    if not handled and self.currentScreen then
-        if self.currentScreen.keyreleased then
-            handled = self.currentScreen:keyreleased(key, scancode)
-        end
-    end
-    
-    for _, handler in ipairs(self.keyboardHandlers) do
-        if handler.onKeyReleased then
-            handler:onKeyReleased(key, scancode)
-        end
-    end
-    
-    return handled
-end
-
-function UIManager:handleTextInput(text)
-    local handled = false
-    
-    if self.root then
-        if self.root.textinput then
-            handled = self.root:textinput(text)
-        end
-    end
-    
-    if not handled and self.currentScreen then
-        if self.currentScreen.textinput then
-            handled = self.currentScreen:textinput(text)
-        end
-    end
-    
-    for _, handler in ipairs(self.keyboardHandlers) do
-        if handler.onTextInput then
-            handler:onTextInput(text)
-        end
-    end
-    
-    return handled
-end
-
--- Управление экранами
-function UIManager:addScreen(name, screen)
-    self.screens[name] = screen
-end
-
-function UIManager:removeScreen(name)
-    self.screens[name] = nil
-    if self.currentScreen == name then
-        self.currentScreen = nil
-    end
-end
-
-function UIManager:setCurrentScreen(name)
-    if self.screens[name] then
-        self.currentScreen = self.screens[name]
-        -- Очищаем предыдущий root и добавляем новый экран
-        if self.root then
-            self.root:clearChildren()
-            self.root:addChild(self.currentScreen)
-        end
-    end
-end
-
-function UIManager:getCurrentScreen()
-    return self.currentScreen
-end
-
--- Управление обработчиками событий
-function UIManager:addTouchHandler(handler)
-    table.insert(self.touchHandlers, handler)
-end
-
-function UIManager:removeTouchHandler(handler)
-    for i, h in ipairs(self.touchHandlers) do
-        if h == handler then
-            table.remove(self.touchHandlers, i)
+function UIManager:removeElement(element)
+    for i, el in ipairs(self.elements) do
+        if el == element then
+            table.remove(self.elements, i)
+            self.needsSort = true
             break
         end
     end
 end
 
-function UIManager:addKeyboardHandler(handler)
-    table.insert(self.keyboardHandlers, handler)
-end
-
-function UIManager:removeKeyboardHandler(handler)
-    for i, h in ipairs(self.keyboardHandlers) do
-        if h == handler then
-            table.remove(self.keyboardHandlers, i)
-            break
-        end
-    end
-end
-
--- Основные методы обновления и отрисовки
-function UIManager:update(dt)
-    if self.layeredManager then
-        self.layeredManager:update(dt)
-    end
-    
-    if self.root then
-        self.root:update(dt)
-    end
-    
-    if self.currentScreen and self.currentScreen.update then
-        self.currentScreen:update(dt)
-    end
+function UIManager:sortElements()
+    table.sort(self.elements, function(a, b)
+        return (a.zIndex or 0) < (b.zIndex or 0)
+    end)
+    self.needsSort = false
 end
 
 function UIManager:draw()
-  
-    local isLayered, isRoot = false, false
-    if self.layeredManager then
-        self.layeredManager:draw()
+    if self.needsSort then
+        self:sortElements()
     end
-    
-    if self.root then
-        self.root:draw()
+
+    for _, el in ipairs(self.elements) do
+        if el.draw then el:draw() end
     end
-    
-    
-    function love.load()
-    local ui = UIManager.getInstance()
-    ui:init(800, 600)
-    
-    -- Просто создаем кнопку без сложной иерархии
-    local testButton = UIButton(100, 100, 200, 50, "Test Button", {
-        backgroundColor = {1, 0, 0, 1}
-    })
-    
-    -- Добавляем прямо в root
-    ui.root:addChild(testButton)
-    
-    print("Button added directly to root")
 end
 
-function love.draw()
-    love.graphics.clear(0.1, 0.1, 0.2)
-    UIManager.getInstance():draw()
-end
-    
-    
+function UIManager:sortByZIndex()
+    table.sort(self.elements, function(a, b)
+        return (a.zIndex or 0) < (b.zIndex or 0)
+    end)
+    self.sorted = true
 end
 
--- Обработка изменения размера окна
-function UIManager:resize(width, height)
-    self.width = width
-    self.height = height
-    
-    if self.root then
-        self.root.width = width
-        self.root.height = height
+function UIManager:update(dt)
+    for _, el in ipairs(self.elements) do
+        if el.update then el:update(dt) end
     end
-    
-    if self.currentScreen and self.currentScreen.resize then
-        self.currentScreen:resize(width, height)
+end
+
+
+function UIManager:handleEvent(event)
+    if not self.sorted then
+        self:sortByZIndex()
+    end
+
+    -- Перебираем от верхнего к нижнему
+    for i = #self.elements, 1, -1 do
+        local el = self.elements[i]
+        if el.handleEvent and el.isInside and event.x and event.y then
+            if el:isInside(event.x, event.y) then
+                if el:handleEvent(event) then
+                    return true -- событие обработано, не передаём дальше
+                end
+            end
+        end
+    end
+    return false
+end
+
+function UIManager:setFocus(element)
+    if self.focused == element then
+        return  -- уже в фокусе
+    end
+
+    -- Снимаем фокус с предыдущего элемента и его родителей
+    if self.focused then
+        local oldFocus = self.focused
+        oldFocus.hasFocus = false
+        oldFocus:dispatchEvent({ type = "focuslost" })
+
+        -- Всплытие focuslost для родителей
+        local parent = oldFocus.parent
+        while parent do
+            parent:dispatchEvent({ type = "focuslost", bubbles = true })
+            parent = parent.parent
+        end
+    end
+
+    -- Устанавливаем фокус на новый элемент
+    self.focused = element
+    if element then
+        element.hasFocus = true
+        element:dispatchEvent({ type = "focusgained" })
+
+        -- Всплытие focusgained для родителей
+        local parent = element.parent
+        while parent do
+            parent:dispatchEvent({ type = "focusgained", bubbles = true })
+            parent = parent.parent
+        end
     end
 end
 
@@ -1010,10 +444,436 @@ return UIManager
 
 
 
--- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/UIPool.lua ====
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/ContentLayout.lua ====
+
+local ContentLayout = {}
+
+function ContentLayout:init()
+    self.contentWidth = 0
+    self.contentHeight = 0
+    self.padding = 0
+end
+
+function ContentLayout:updateContentSize()
+    self.contentWidth = 0
+    self.contentHeight = 0
+    for _, child in ipairs(self.children) do
+        self.contentWidth = math.max(self.contentWidth, child.x + child.width)
+        self.contentHeight = math.max(self.contentHeight, self.contentHeight + child.height)
+    end
+end
+
+return ContentLayout
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/ContentLayout.lua ====
 
 
--- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/UIPool.lua ====
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Geometry.lua ====
+
+local Geometry = {}
+
+function Geometry:init()
+    self.x = 0
+    self.y = 0
+    self.width = 0
+    self.height = 0
+end
+
+function Geometry:isInside(x, y)
+    return x >= self.x and y >= self.y and x <= self.x + self.width and y <= self.y + self.height
+end
+
+function Geometry:toGlobal(x, y)
+    local node = self
+    while node.parent do
+        x = x + node.parent.x
+        y = y + node.parent.y
+        node = node.parent
+    end
+    return x, y
+end
+
+return Geometry
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Geometry.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Hierarchy.lua ====
+
+local Hierarchy = {}
+
+function Hierarchy:init()
+    self.parent = nil
+    self.children = {}
+end
+
+function Hierarchy:addChild(child)
+    if not child then
+        require("src.ui.utils.DebugConsole").log( "Child cannot be nil")
+        return 
+    end
+    
+    if child.parent then
+        child.parent:removeChild(child)
+    end
+    child.parent = self
+    child.x = self.padding or 0
+    child.y = (self.contentHeight or 0) + (self.padding or 0)
+    table.insert(self.children, child)
+    
+    
+    
+    if self.updateContentSize then self:updateContentSize() end
+    if self.sortChildren then self:sortChildren() end
+end
+
+function Hierarchy:removeChild(child)
+    for i, c in ipairs(self.children) do
+        if c == child then
+            table.remove(self.children, i)
+            c.parent = nil
+            return
+        end
+    end
+end
+
+function Hierarchy:sortChildren()
+    table.sort(self.children, function(a, b)
+        return (a.zIndex or 0) < (b.zIndex or 0)
+    end)
+    self._childrenSorted = true
+end
+
+function Hierarchy:getRoot()
+    local node = self
+    while node.parent do
+        node = node.parent
+    end
+    return node
+end
+
+return Hierarchy
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Hierarchy.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Interactivity.lua ====
+
+local Interactivity = {}
+
+function Interactivity:init()
+    self.enabled = true
+end
+
+function Interactivity:enable()
+    self.enabled = true
+    return self
+end
+
+function Interactivity:disable()
+    self.enabled = false
+    return self
+end
+
+return Interactivity
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Interactivity.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Visibility.lua ====
+
+local Visibility = {}
+
+function Visibility:init()
+    self.visible = true
+end
+
+function Visibility:show()
+    self.visible = true
+    return self
+end
+
+function Visibility:hide()
+    self.visible = false
+    return self
+end
+
+return Visibility
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Visibility.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/ZIndex.lua ====
+
+local ZIndex = {}
+
+function ZIndex:init()
+    self.zIndex = 0
+end
+
+function ZIndex:setZIndex(value)
+    self.zIndex = value or 0
+    if self.parent then
+        self.parent:sortChildren()
+    end
+end
+
+return ZIndex
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/ZIndex.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/Label.lua ====
+
+local Element = require("src.ui.core.Element")
+local class = require("lib.middleclass")
+
+local Label = class("Label", Element)
+
+function Label:initialize(x, y, text, color, options)
+    options = options or {}
+    Element.initialize(self, x, y, 0, 0, options) -- Ширина и высота будут вычислены при установке текста
+    
+    self.text = text or ""
+    self.font = love.graphics.getFont()
+    self.color = color or {1, 1, 1, 1} -- Белый цвет по умолчанию
+    self.align = options.align or "left" -- left, center, right
+    self.wrap = options.wrap or false -- Перенос текста
+    self.limit = options.limit -- Максимальная ширина текста
+    
+    -- Вычисляем размеры при инициализации
+    self:updateDimensions()
+end
+
+-- Обновляет размеры label в соответствии с текстом
+function Label:updateDimensions()
+    if not self.font then return end
+    
+    if self.wrap and self.limit then
+        self.width = self.limit
+        local _, wrapped = self.font:getWrap(self.text, self.limit)
+        self.height = #wrapped * self.font:getHeight()
+    else
+        self.width = self.font:getWidth(self.text)
+        self.height = self.font:getHeight()
+    end
+end
+
+-- Устанавливает текст и обновляет размеры
+function Label:setText(text)
+    self.text = text or ""
+    self:updateDimensions()
+    return self
+end
+
+-- Устанавливает шрифт и обновляет размеры
+function Label:setFont(font)
+    self.font = font or love.graphics.getFont()
+    self:updateDimensions()
+    return self
+end
+
+-- Устанавливает цвет текста
+function Label:setColor(color)
+    self.color = color or {1, 1, 1, 1}
+    return self
+end
+
+-- Устанавливает выравнивание текста
+function Label:setAlign(align)
+    self.align = align or "left"
+    return self
+end
+
+-- Отрисовка label
+function Label:drawSelf()
+    
+    if not self.visible or not self.font or #self.text == 0 then return end
+    
+    
+    
+    local oldColor = {love.graphics.getColor()}
+    love.graphics.setFont(self.font)
+    love.graphics.setColor(self.color)
+    
+    if self.wrap and self.limit then
+        love.graphics.printf(self.text, self.x, self.y, self.limit, self.align)
+    else
+        local x = self.x
+        if self.align == "center" then
+            x = x + (self.width / 2)
+        elseif self.align == "right" then
+            x = x + self.width
+        end
+        
+        love.graphics.print(self.text, x, self.y, 0, 1, 1, 
+                           self.align == "center" and self.width/2 or 
+                           self.align == "right" and self.width or 0)
+    end
+    
+    love.graphics.setColor(oldColor)
+end
+
+return Label
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/Label.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/ScrollView.lua ====
+
+local class = require("lib.middleclass")
+local Element = require("src.ui.core.Element")
+
+local ScrollView = class("ScrollView", Element)
+
+function ScrollView:initialize(x, y, w, h, options)
+    options = options or {}
+    Element:initialize(x, y, w, h, options)
+    self.content = Element:new(10, 10, w - 10, h + 10, {})
+    
+    -- Параметры прокрутки
+    self.scrollY = 0
+    self.maxScrollY = 0
+    self.scrollBarVisible = false
+    self.scrollBarSize = options.scrollBarSize or 10
+    self.scrollBarColor = options.scrollBarColor or {0.1, 0.5, 0.5, 0.5}
+    self.scrollBarMargin = options.scrollBarMargin or 2
+    
+    -- Для тач-событий и инерции
+    self.touchId = nil
+    self.lastTouchY = 0
+    self.velocityY = 0
+    self.friction = 0.92
+    self.maxVelocity = 1000
+    
+    -- Обработчики событий
+    self:addEventListener("touchpressed", function(e) return self:onTouchPressed(e) end)
+    self:addEventListener("touchreleased", function(e) return self:onTouchReleased(e) end)
+    self:addEventListener("touchmoved", function(e) return self:onTouchMoved(e) end)
+    
+    self:addChild(self.content)
+    
+    require("src.ui.utils.DebugConsole").log( "Child: ".. tostring(#self.children))
+end
+
+function ScrollView:setContentSize(w, h)
+
+end
+
+function ScrollView:updateScrollLimits()
+    self.maxScrollY = math.max(0, (self.content.contentHeight or 0) - self.height)
+    self.scrollY = math.max(0, math.min(self.scrollY, self.maxScrollY))
+    self.scrollBarVisible = self.maxScrollY > 0
+end
+
+function ScrollView:update(dt)
+    if not self.touchId and math.abs(self.velocityY) > 1 then
+        local delta = self.velocityY * dt * 60
+        self.scrollY = self.scrollY + delta
+        self.velocityY = self.velocityY * self.friction
+        
+        if self.scrollY < 0 then
+            self.scrollY = self.scrollY * 0.3
+            self.velocityY = 0
+        elseif self.scrollY > self.maxScrollY then
+            self.scrollY = self.maxScrollY + (self.scrollY - self.maxScrollY) * 0.3
+            self.velocityY = 0
+        end
+        
+        self:updateScrollLimits()
+    end
+end
+
+-- Обработчики тач-событий
+function ScrollView:onTouchPressed(event)
+    if not self:isInside(event.x, event.y) then return false end
+    
+    if not self.touchId then
+        self.touchId = event.id
+        self.lastTouchY = event.y
+        self.velocityY = 0
+        return true
+    end
+    return false
+end
+
+function ScrollView:onTouchReleased(event)
+    if event.id == self.touchId then
+        self.touchId = nil
+        return true
+    end
+    return false
+end
+
+function ScrollView:onTouchMoved(event)
+    if event.id == self.touchId then
+        local deltaY = self.lastTouchY - event.y
+        self.lastTouchY = event.y
+        
+        self.velocityY = math.max(-self.maxVelocity, math.min(self.maxVelocity, deltaY * 15))
+        self.scrollY = self.scrollY + deltaY
+        self:updateScrollLimits()
+        return true
+    end
+    return false
+end
+
+function ScrollView:drawSelf()
+    
+    self.content.height = self.contentHeight
+  
+    -- Включаем обрезку по области ScrollView
+    love.graphics.setScissor(self.x, self.y, self.width, self.height)
+    
+    -- Рисуем фон
+    love.graphics.setColor(0.9, 0.9, 0.9, 1)
+    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
+    
+    -- Сохраняем текущие настройки графики
+    love.graphics.push()
+    
+    -- Смещаем начало координат для контента с учетом позиции ScrollView
+    love.graphics.translate(self.x, self.y - self.scrollY)
+    
+    -- Рисуем контент (все дочерние элементы content)
+    -- Передаем 0,0 так как уже сделали трансляцию
+    self.content:drawSelf()
+    
+    -- Восстанавливаем настройки графики
+    love.graphics.pop()
+    
+    -- Выключаем обрезку
+    love.graphics.setScissor()
+    
+    -- Рисуем полосу прокрутки
+    if self.scrollBarVisible and self.maxScrollY > 0 then
+        local scrollAreaHeight = self.height - self.scrollBarMargin * 2
+        local scrollBarHeight = math.max(30, scrollAreaHeight * (self.height / (self.content.contentHeight or self.height)))
+        local scrollBarPos = self.scrollBarMargin + (self.scrollY / self.maxScrollY) * (scrollAreaHeight - scrollBarHeight)
+        
+        love.graphics.setColor(self.scrollBarColor)
+        love.graphics.rectangle("fill", 
+            self.x + self.width - self.scrollBarSize - self.scrollBarMargin, 
+            self.y + scrollBarPos, 
+            self.scrollBarSize, 
+            scrollBarHeight)
+    end
+end
+
+-- Методы для работы с дочерними элементами
+function ScrollView:addChild(child)
+    
+    self.content:addChild(child)
+    self:updateScrollLimits()
+end
+
+function ScrollView:removeChild(child)
+    self.content:removeChild(child)
+    self:updateScrollLimits()
+end
+
+return ScrollView
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/ScrollView.lua ====
 
 
 
@@ -1022,131 +882,54 @@ return UIManager
 local class = require("lib.middleclass")
 local Element = require("src.ui.core.Element")
 
-local UIButton = class("UIButton", Element)
+local Button = class("Button", Element)
 
-function UIButton:initialize(x, y, width, height, label, options)
-    Element.initialize(self, x, y, width, height)
-    
-    self.label = label or "Button"
-    self.options = options or {}
-    
-    -- Внешний вид
-    self.backgroundColor = self.options.backgroundColor or {0.2, 0.4, 0.8, 1}
-    self.textColor = self.options.textColor or {1, 1, 1, 1}
-    self.font = self.options.font or love.graphics.getFont()
-    self.borderRadius = self.options.borderRadius or 4
-    self.padding = self.options.padding or 8
-    
-    -- Состояния
+function Button:initialize(x, y, w, h, text, options)
+    Element.initialize(self, x, y, w, h, options)
+    self.text = text or "Button"
     self.pressed = false
-    self.hovered = false
-    self.enabled = true
-    
-    -- Коллбэки
-    self.onClick = self.options.onClick
-end
+    self.onClick = options and options.onClick
+    self.backgroundColor = options and options.backgroundColor or {0.5, 0.5, 0.5, 1}
+    self.textColor = options and options.textColor or {1, 1, 1, 1}
 
-function UIButton:onTouchPressed(id, x, y, dx, dy, pressure)
-    if not self.enabled then return false end
-    self.pressed = true
-    return true -- Обработано
-end
+    self:addEventListener("touchpressed", function(event)
+        if self:isInside(event.x, event.y) then
+            require("src.ui.utils.DebugConsole").log("press")
+            self.pressed = true
+        end
+    end)
 
-function UIButton:onTouchReleased(id, x, y, dx, dy, pressure)
-    if not self.enabled or not self.pressed then return false end
-    
-    self.pressed = false
-    
-    -- Если отпускание произошло внутри кнопки
-    if self:isInside(x, y) and self.onClick then
-        self.onClick(self)
-    end
-    
-    return true -- Обработано
-end
-
-function UIButton:onTouchMoved(id, x, y, dx, dy, pressure)
-    if not self.enabled or not self.pressed then return false end
-    
-    -- Обновляем состояние наведения
-    self.hovered = self:isInside(x, y)
-    
-    return true -- Обработано
-end
-
-function UIButton:setLabel(label)
-    self.label = label
-end
-
-function UIButton:setEnabled(enabled)
-    self.enabled = enabled
-end
-
-function UIButton:draw()
-    if not self.visible then return end
-    
-    -- Сохраняем текущий цвет
-    local r, g, b, a = love.graphics.getColor()
-    
-    -- Определяем цвет кнопки на основе состояния
-    local bgColor = {unpack(self.backgroundColor)}
-    
-    if not self.enabled then
-        -- Делаем цвет более серым для отключенного состояния
-        bgColor[1] = bgColor[1] * 0.7
-        bgColor[2] = bgColor[2] * 0.7
-        bgColor[3] = bgColor[3] * 0.7
-        bgColor[4] = bgColor[4] * 0.7
-    elseif self.pressed then
-        -- Затемняем для нажатого состояния
-        bgColor[1] = bgColor[1] * 0.8
-        bgColor[2] = bgColor[2] * 0.8
-        bgColor[3] = bgColor[3] * 0.8
-    elseif self.hovered then
-        -- Делаем ярче для наведения
-        bgColor[1] = math.min(bgColor[1] * 1.2, 1)
-        bgColor[2] = math.min(bgColor[2] * 1.2, 1)
-        bgColor[3] = math.min(bgColor[3] * 1.2, 1)
-    end
-    
-    -- Рисуем фон кнопки
-    love.graphics.setColor(unpack(bgColor))
-    
-    -- Если LÖVE поддерживает скругленные прямоугольники
-    if love.graphics.newCanvas then -- Проверка поддержки новой функциональности
-        if self.borderRadius > 0 then
-            love.graphics.rectangle("fill", self.x, self.y, self.width, self.height, self.borderRadius, self.borderRadius)
+    self:addEventListener("touchreleased", function(event)
+        if self.pressed and self:isInside(event.x, event.y) then
+            self.pressed = false
+            if self.onClick then self.onClick(self, event) end
         else
-            love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
+            self.pressed = false
         end
-    else
-        -- Запасной вариант для старых версий
-        love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
-    end
-    
-    -- Рисуем текст по центру
-    love.graphics.setColor(unpack(self.textColor))
-    love.graphics.setFont(self.font)
-    
-    local textWidth = self.font:getWidth(self.label)
-    local textHeight = self.font:getHeight()
-    local textX = self.x + (self.width - textWidth) / 2
-    local textY = self.y + (self.height - textHeight) / 2
-    
-    love.graphics.print(self.label, textX, textY)
-    
-    -- Восстанавливаем старый цвет
-    love.graphics.setColor(r, g, b, a)
-    
-    -- Рисуем дочерние элементы (если есть)
+    end)
+end
+
+function Button:draw()
+    if not self.visible then return end
+
+    local bgColor = self.pressed and {0.4, 0.4, 1} or {0.2, 0.2, 0.8}
+    love.graphics.setColor(bgColor)
+    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
+
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf(self.text, self.x, self.y + self.height / 2 - 6, self.width, "center")
+
+    -- Debug frame
+    love.graphics.setColor(1, 1, 1, 0.5)
+    love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
+
+    -- Отрисовка дочерних (если есть)
     for _, child in ipairs(self.children) do
-        if child.draw then
-            child:draw()
-        end
+        child:draw()
     end
 end
 
-return UIButton
+return Button
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/UIButton.lua ====
 
 
@@ -1514,10 +1297,195 @@ return UILabel
 
 
 
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/fonts/init.lua ====
+
+local Fonts = {}
+
+function Fonts.load()
+    Fonts.default = love.graphics.newFont("src/ui/fonts/font.otf", 16)
+    Fonts.big = love.graphics.newFont("src/ui/fonts/font.otf", 24)
+end
+
+return Fonts
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/fonts/init.lua ====
+
+
+
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/utils/BlueprintBuilder.lua ====
 
 
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/utils/BlueprintBuilder.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/utils/DebugConsole.lua ====
+
+local DebugConsole = {
+    messages = {},
+    maxLines = 15,
+    visible = true,
+    x = 10,
+    y = 10,
+    width = 300,
+    height = 200,
+    backgroundColor = {0, 0, 0, 0.7},
+    textColor = {1, 1, 1, 1},
+    scrollOffset = 0,
+    lastMessageTime = 0,
+    autoScroll = true,
+    debugTouchVisible = true,
+    debugUIHierarchy = false
+}
+
+-- Логирование сообщений
+function DebugConsole.log(...)
+    local args = {...}
+    local text = ""
+    
+    -- Обрабатываем все аргументы
+    for i, arg in ipairs(args) do
+        if i > 1 then
+            text = text .. " " -- Разделитель между аргументами
+        end
+        text = text .. tostring(arg)
+    end
+    
+
+
+    table.insert(DebugConsole.messages, 1, {
+        text = tostring(text),
+        time = love.timer.getTime()
+    })
+    
+    -- Обрезка старых сообщений
+    if #DebugConsole.messages > DebugConsole.maxLines * 3 then
+        table.remove(DebugConsole.messages)
+    end
+    
+    -- Автопрокрутка к новым сообщениям
+    if DebugConsole.autoScroll then
+        DebugConsole.scrollOffset = 0
+    end
+    
+    print("[DEBUG] " .. text)
+end
+
+-- Отрисовка консоли
+function DebugConsole.draw()
+    if not DebugConsole.visible then return end
+    
+    -- Фон консоли
+    love.graphics.setColor(unpack(DebugConsole.backgroundColor))
+    love.graphics.rectangle("fill", DebugConsole.x, DebugConsole.y, 
+                          DebugConsole.width, DebugConsole.height)
+    
+    -- Текст консоли
+    love.graphics.setColor(unpack(DebugConsole.textColor))
+    local visibleLines = math.min(DebugConsole.maxLines, #DebugConsole.messages)
+    local startIndex = 1 + DebugConsole.scrollOffset
+    local endIndex = math.min(startIndex + visibleLines - 1, #DebugConsole.messages)
+    
+    for i = startIndex, endIndex do
+        local msg = DebugConsole.messages[i]
+        local relIndex = i - startIndex
+        love.graphics.print(msg.text, 
+            DebugConsole.x + 5, 
+            DebugConsole.y + 5 + relIndex * 20)
+    end
+    
+    -- Отладочная информация (если включена)
+    if DebugConsole.debugTouchVisible then
+        DebugConsole.drawDebugInfo()
+    end
+end
+
+-- Отладочная информация
+function DebugConsole.drawDebugInfo()
+    local ui = UIManager and UIManager.getInstance()
+    if not ui then return end
+    
+    -- Последнее касание
+    love.graphics.setColor(1, 0, 0, 0.5)
+    love.graphics.circle("fill", ui.lastTouch.x, ui.lastTouch.y, 15)
+    
+    -- FPS и координаты
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.print("FPS: " .. love.timer.getFPS(), 10, love.graphics.getHeight() - 30)
+    love.graphics.print(string.format("Touch: %d, %d", ui.lastTouch.x, ui.lastTouch.y), 
+        10, love.graphics.getHeight() - 60)
+end
+
+-- Логирование иерархии UI
+function DebugConsole.logUIHierarchy()
+    local ui = UIManager and UIManager.getInstance()
+    if not ui or not ui.root then 
+        DebugConsole.log("UI Hierarchy: No root element")
+        return
+    end
+    
+    DebugConsole.log("=== UI Hierarchy ===")
+    local function logElement(el, level)
+        local indent = string.rep("  ", level)
+        local info = string.format("%s%s [%d,%d %dx%d] %s",
+            indent, tostring(el), el.x, el.y, el.width, el.height,
+            el.label or "")
+        DebugConsole.log(info)
+        
+        if el.children then
+            for _, child in ipairs(el.children) do
+                logElement(child, level + 1)
+            end
+        end
+    end
+    
+    logElement(ui.root, 0)
+end
+
+-- Управление консолью
+function DebugConsole.toggle()
+    DebugConsole.visible = not DebugConsole.visible
+end
+
+function DebugConsole.toggleDebug()
+    DebugConsole.debugTouchVisible = not DebugConsole.debugTouchVisible
+    DebugConsole.debugUIHierarchy = not DebugConsole.debugUIHierarchy
+    DebugConsole.log("Debug mode: " .. (DebugConsole.debugTouchVisible and "ON" or "OFF"))
+end
+
+-- Прокрутка консоли
+function DebugConsole.scroll(direction)
+    local maxOffset = math.max(0, #DebugConsole.messages - DebugConsole.maxLines)
+    DebugConsole.scrollOffset = math.max(0, math.min(maxOffset, DebugConsole.scrollOffset + direction))
+    DebugConsole.autoScroll = DebugConsole.scrollOffset == 0
+end
+
+-- Обработка ввода для консоли
+function DebugConsole.handleInput(key)
+    if key == "d" then
+        DebugConsole.toggleDebug()
+    elseif key == "h" then
+        DebugConsole.logUIHierarchy()
+    elseif key == "pageup" then
+        DebugConsole.scroll(-5)
+    elseif key == "pagedown" then
+        DebugConsole.scroll(5)
+    elseif key == "home" then
+        DebugConsole.scrollOffset = 0
+        DebugConsole.autoScroll = true
+    elseif key == "end" then
+        DebugConsole.scrollOffset = math.max(0, #DebugConsole.messages - DebugConsole.maxLines)
+        DebugConsole.autoScroll = false
+    end
+end
+
+-- Перемещение консоли
+function DebugConsole.move(x, y)
+    DebugConsole.x = math.max(0, math.min(love.graphics.getWidth() - DebugConsole.width, x))
+    DebugConsole.y = math.max(0, math.min(love.graphics.getHeight() - DebugConsole.height, y))
+end
+
+return DebugConsole
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/utils/DebugConsole.lua ====
 
 
 

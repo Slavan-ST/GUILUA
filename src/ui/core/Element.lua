@@ -1,211 +1,86 @@
 local class = require("lib.middleclass")
 local EventDispatcher = require("src.ui.core.EventDispatcher")
 
-local Element = class("Element")
-EventDispatcher.mixin(Element)
+-- Подключаем миксины
+local Hierarchy = require("src.ui.core.mixins.Hierarchy")
+local Visibility = require("src.ui.core.mixins.Visibility")
+local Geometry = require("src.ui.core.mixins.Geometry")
+local ZIndex = require("src.ui.core.mixins.ZIndex")
+local Interactivity = require("src.ui.core.mixins.Interactivity")
+local ContentLayout = require("src.ui.core.mixins.ContentLayout")
 
--- Инициализация
+local Element = class("Element")
+
+-- Применяем миксины
+Element:mixin(Hierarchy)
+Element:mixin(Visibility)
+Element:mixin(Geometry)
+Element:mixin(ZIndex)
+Element:mixin(Interactivity)
+Element:mixin(ContentLayout)
+Element:mixin(EventDispatcher)
+
+
 function Element:initialize(x, y, w, h, options)
+    -- Инициализируем EventDispatcher
+    EventDispatcher.initialize(self)
+
+    -- Инициализируем миксины
+    Hierarchy.initialize(self)
+    Visibility.initialize(self)
+    Geometry.initialize(self)
+    ZIndex.initialize(self)
+    Interactivity.initialize(self)
+    ContentLayout.initialize(self)
+
+    -- Инициализация свойств
     self.x = x or 0
     self.y = y or 0
     self.width = w or 0
     self.height = h or 0
-    self.visible = true
-    self.enabled = true
-    self.parent = nil
-    self.children = {}
-    self.zIndex = options and options.zIndex or 0  -- Защита от nil
-    self.contentWidth = 0  -- Ширина контента
-    self.contentHeight = 0 -- Высота контента
-    self.padding = 0      -- Отступ между элементами (опционально)
-
-    EventDispatcher.initialize(self)
-end
-
--- Проверка, попадает ли точка внутри элемента (hit test)
-function Element:isInside(x, y)
-    return x >= self.x and y >= self.y and x <= self.x + self.width and y <= self.y + self.height
+    self.zIndex = options and options.zIndex or 0
 end
 
 -- Обработка события
 function Element:handleEvent(event)
     -- Рассчитываем глобальные координаты с учетом родителей
     local globalX, globalY = self:toGlobal(event.x, event.y)
-
+    
     -- Проверка попадания в элемент
-    if event.x and event.y and not self:isInside(globalX, globalY) then
-        return false  -- событие не попало в элемент
+    if event.x and event.y and not self:isInside(globalX, globalY) then return false -- событие не попало в элемент 
     end
-
+    
     -- Обновляем локальные координаты относительно текущего элемента
     event.localX = globalX - self.x
     event.localY = globalY - self.y
-
-    -- Передаем событие в EventDispatcher
-    return self:dispatchEvent(event)
+    
+    -- Передаем событие в EventDispatcher 
+    return self:dispatchEvent(event) 
 end
 
--- Преобразует глобальные координаты с учетом иерархии
-function Element:toGlobal(x, y)
-    
-    local node = self
-    while node.parent do
-        
-        x = x + node.parent.x
-        y = y + node.parent.y
-        node = node.parent
-    end 
-    
-    return x, y
-end
-
-
--- Модифицируем метод addChild
--- Модифицируем метод addChild для автоматического размещения
-function Element:addChild(child)
-    assert(child, "Child cannot be nil")
-    
-    
-    -- Если у ребенка уже есть родитель, сначала удаляем его
-    if child.parent then
-        child.parent:removeChild(child)
-    end
-    
-    child.parent = self
-    
-    -- Автоматическое позиционирование (например, вертикальное)
-    child.x = self.padding or 0
-    child.y = (self.contentHeight or 0) + (self.padding or 0)
-    
-    -- Обновляем размеры контента родителя
-    self.contentWidth = math.max(self.contentWidth or 0, child.x + child.width)
-    self.contentHeight = math.max(self.contentHeight or 0, child.y + child.height)
-    
-
-    table.insert(self.children, child)
-    
-    -- Автоматическая сортировка по zIndex
-    self:sortChildren()
-    self:updateContentSize()
-end
-
--- Метод для ручного обновления размеров контента
-function Element:updateContentSize()
-    self.contentWidth = 0
-    self.contentHeight = 0
-    
-    for _, child in ipairs(self.children) do
-        self.contentWidth = math.max(self.contentWidth, child.x + child.width)
-        self.contentHeight = math.max(self.contentHeight, self.contentHeight + child.height)
-    end
-end
-
-
-function Element:removeChild(child)
-    for i, c in ipairs(self.children) do
-        if c == child then
-            table.remove(self.children, i)
-            c.parent = nil
-            return
-        end
-    end
-end
-
--- Отображение и обновление
-function Element:show() self.visible = true; return self end
-function Element:hide() self.visible = false; return self end
-function Element:enable() self.enabled = true; return self end
-function Element:disable() self.enabled = false; return self end
-
-function Element:setZIndex(value)
-    self.zIndex = value or 0
-    if self.parent then
-        self.parent:sortChildren()
-    end
-end
-
-function Element:sortChildren()
-    table.sort(self.children, function(a, b)
-        return (a.zIndex or 0) < (b.zIndex or 0)
-    end)
-    -- Помечаем, что дети отсортированы
-    self._childrenSorted = true
-end
-
-
-
--- Модифицируем метод drawSelf
-function Element:drawSelf()
-    
-    local globalX, globalY = self.x, self.y
-    -- Базовая реализация (может быть переопределена в дочерних классах)
-    
-        -- Рисуем дочерние элементы
-    if self.children then
-        for _, child in ipairs(self.children) do
-            child:draw()
-        end
-    end
-end
 function Element:draw()
-    --DebugConsole.log("Drawing element at", self.x, self.y, "visible:", self.visible, self.class:typeof())
     if not self.visible then return end
-    
-    
-    
     love.graphics.setColor(0.7, 0.6, 0.4, 1) -- hsl(256,66.6%,48.1%)
     love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
-
-    -- Сортируем детей, если нужно
+    
     if not self._childrenSorted then
         self:sortChildren()
     end
-
-    -- Рисуем сам элемент
-    self:drawSelf()
     
-
-end
-
--- Устанавливает фокус на элемент (с учетом иерархии)
-function Element:setFocus()
-    local root = self:getRoot()
-    if root.setFocus then
-        root:setFocus(self)  -- делегируем UIManager
-    end
-end
-
--- Возвращает текущий элемент с фокусом в поддереве
-function Element:getFocusedChild()
-    for _, child in ipairs(self.children) do
-        local focused = child:getFocusedChild()
-        if focused then
-            return focused
+    
+    
+    -- Рисуем дочерние элементы
+    if self.children and #self.children > 0 then
+        for _, child in ipairs(self.children) do
+            child:drawSelf()
         end
     end
-    return self.hasFocus and self or nil
+    
+    self:drawSelf()
 end
 
-function Element:update(dt)
-    if not self.enabled then return end
-    --self:updateSelf(dt)
-    for _, child in ipairs(self.children) do
-        child:update(dt)
-    end
-end
-
-function Element:focus()
-    if self:getRoot().setFocus then
-        self:getRoot():setFocus(self)
-    end
-end
-
-function Element:getRoot()
-    local node = self
-    while node.parent do
-        node = node.parent
-    end
-    return node
+function Element:drawSelf()
+  print("test")
 end
 
 return Element

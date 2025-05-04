@@ -1,30 +1,9 @@
 local middleclass = {
   _VERSION     = 'middleclass v4.1.1',
   _DESCRIPTION = 'Object Orientation for Lua',
-  _URL         = 'https://github.com/kikito/middleclass',
+  _URL         = '',
   _LICENSE     = [[
-    MIT LICENSE
 
-    Copyright (c) 2011 Enrique García Cota
-
-    Permission is hereby granted, free of charge, to any person obtaining a
-    copy of this software and associated documentation files (the
-    "Software"), to deal in the Software without restriction, including
-    without limitation the rights to use, copy, modify, merge, publish,
-    distribute, sublicense, and/or sell copies of the Software, and to
-    permit persons to whom the Software is furnished to do so, subject to
-    the following conditions:
-
-    The above copyright notice and this permission notice shall be included
-    in all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-    OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-    IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-    CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-    TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-    SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   ]]
 }
 
@@ -121,7 +100,25 @@ local function _includeMixin(aClass, mixin)
   return aClass
 end
 
+-- Добавляем функцию mixin
+local function _mixin(aClass, mixin)
+  assert(type(mixin) == 'table', "mixin must be a table")
 
+  for name, method in pairs(mixin) do
+    if name ~= "included" and name ~= "static" then
+      _declareInstanceMethod(aClass, name, method)
+    end
+  end
+
+  for name, method in pairs(mixin.static or {}) do
+    aClass.static[name] = method
+  end
+
+  if type(mixin.included) == "function" then
+    mixin:included(aClass)
+  end
+  return aClass
+end
 
 local DefaultMixin = {
   __tostring   = function(self) return "instance of " .. tostring(self.class) end,
@@ -184,6 +181,12 @@ local DefaultMixin = {
       assert(type(self) == 'table', "Make sure you that you are using 'Class:include' instead of 'Class.include'")
       for _,mixin in ipairs({...}) do _includeMixin(self, mixin) end
       return self
+    end,
+
+    -- Добавляем метод mixin в статические методы
+    mixin = function(self, mixin)
+      assert(type(self) == 'table', "Make sure you that you are using 'Class:mixin' instead of 'Class.mixin'")
+      return _mixin(self, mixin)
     end
   }
 }

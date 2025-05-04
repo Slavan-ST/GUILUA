@@ -60,7 +60,10 @@ end
 
 -- Отрисовка label
 function Label:drawSelf()
+    
     if not self.visible or not self.font or #self.text == 0 then return end
+    
+    
     
     local oldColor = {love.graphics.getColor()}
     love.graphics.setFont(self.font)

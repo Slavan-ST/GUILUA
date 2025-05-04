@@ -6,19 +6,28 @@
 📁 src/
     📁 ui/
         📁 utils/
+            📄 DebugConsole.lua
             📄 BlueprintBuilder.lua
             📄 UIStyle.lua
         📁 core/
             📄 UIManager.lua
-            📄 UIPool.lua
-            📄 UIEventDispatcher.lua
-            📄 Root.lua
-            📄 ContainerElement.lua
-            📄 LayeredManager.lua
+            📄 EventDispatcher.lua
             📄 Element.lua
+            📁 mixins/
+                📄 Visibility.lua
+                📄 ContentLayout.lua
+                📄 Hierarchy.lua
+                📄 Interactivity.lua
+                📄 ZIndex.lua
+                📄 Geometry.lua
+        📁 fonts/
+            📄 font.otf
+            📄 init.lua
         📁 elements/
             📄 UILabel.lua
+            📄 ScrollView.lua
             📄 UIButton.lua
+            📄 Label.lua
             📄 UIInputField.lua
 📁 lib/
     📄 middleclass.lua

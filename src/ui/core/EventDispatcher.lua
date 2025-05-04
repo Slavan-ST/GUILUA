@@ -68,23 +68,6 @@ function EventDispatcher:dispatchEvent(event)
     return not event._stopped
 end
 
--- Метод для добавления миксина
-function EventDispatcher.mixin(target)
-    target.initialize = EventDispatcher._wrapInit(target.initialize)
-    for k, v in pairs(EventDispatcher) do
-        if k ~= "mixin" and k ~= "_wrapInit" then
-            target[k] = v
-        end
-    end
-end
-
--- Обёртка для инициализации
-function EventDispatcher._wrapInit(origInit)
-    return function(self, ...)
-        if origInit then origInit(self, ...) end
-        EventDispatcher.initialize(self)
-    end
-end
 
 -- Проверка, можно ли обработать событие
 function EventDispatcher:canHandleEvent(event)
