@@ -6,7 +6,7 @@ local ScrollView = class("ScrollView", Element)
 function ScrollView:initialize(x, y, w, h, options)
     options = options or {}
     Element:initialize(x, y, w, h, options)
-    self.content = Element:new(0, 0, w, h, {})
+    self.content = Element:new(0, 0, w - 100, h, {})
     
     -- Параметры прокрутки
     self.scrollY = 0
@@ -32,13 +32,19 @@ function ScrollView:initialize(x, y, w, h, options)
 end
 
 function ScrollView:setContentSize(w, h)
-    self.content.width = w
-    self.content.height = h
+    
+    self:updateContentSize()
+    
+    self.content.height = self.contentHeight
+    
+    self:updateContentSize()
     self:updateScrollLimits()
+    
+    
 end
 
 function ScrollView:updateScrollLimits()
-    self.maxScrollY = math.max(0, self.content.height - self.height)
+    self.maxScrollY = math.max(0, self.contentHeight )
     self.scrollY = math.max(0, math.min(self.scrollY, self.maxScrollY))
     self.scrollBarVisible = self.maxScrollY > 0
 end
@@ -96,6 +102,8 @@ function ScrollView:onTouchMoved(event)
 end
 
 function ScrollView:drawSelf()
+  
+  
     -- Включаем обрезку по области ScrollView
     love.graphics.setScissor(self.x, self.y, self.width, self.height)
     
