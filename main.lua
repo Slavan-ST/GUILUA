@@ -16,14 +16,14 @@ function love.load()
     
     -- Создаем ScrollView с явным указанием options
     local scrollView = ScrollView:new(
-        50, 
-        50, 
-        love.graphics.getWidth() - 100, 
-        love.graphics.getHeight() - 100, 
+        100, 
+        100, 
+        love.graphics.getWidth() - 200, 
+        love.graphics.getHeight() - 200, 
         {
             zIndex = 1,
             scrollBarSize = 10,
-            scrollBarColor = {0.5, 0.05, 0.5, 0.1}
+            scrollBarColor = {0.1, 0.5, 0.2, 0.1}
         }
     )
     

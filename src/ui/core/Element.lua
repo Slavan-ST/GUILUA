@@ -47,12 +47,15 @@ end
 
 -- Преобразует глобальные координаты с учетом иерархии
 function Element:toGlobal(x, y)
+    
     local node = self
     while node.parent do
+        
         x = x + node.parent.x
         y = y + node.parent.y
         node = node.parent
-    end
+    end 
+    
     return x, y
 end
 
@@ -62,9 +65,9 @@ end
 function Element:addChild(child)
     assert(child, "Child cannot be nil")
     
+    
     -- Если у ребенка уже есть родитель, сначала удаляем его
     if child.parent then
-        child.x, child.y = child.x - child.parent.x, child.y - child.parent.y
         child.parent:removeChild(child)
     end
     
@@ -78,13 +81,12 @@ function Element:addChild(child)
     self.contentWidth = math.max(self.contentWidth or 0, child.x + child.width)
     self.contentHeight = math.max(self.contentHeight or 0, child.y + child.height)
     
-    -- Преобразуем координаты к глобальным
-    child.x, child.y = child:toGlobal(child.x, child.y)
-    
+
     table.insert(self.children, child)
     
     -- Автоматическая сортировка по zIndex
     self:sortChildren()
+    self:updateContentSize()
 end
 
 -- Метод для ручного обновления размеров контента
@@ -94,7 +96,7 @@ function Element:updateContentSize()
     
     for _, child in ipairs(self.children) do
         self.contentWidth = math.max(self.contentWidth, child.x + child.width)
-        self.contentHeight = math.max(self.contentHeight, child.y + child.height)
+        self.contentHeight = math.max(self.contentHeight, self.contentHeight + child.height)
     end
 end
 
@@ -134,10 +136,10 @@ end
 
 -- Модифицируем метод drawSelf
 function Element:drawSelf()
+    
     local globalX, globalY = self.x, self.y
     -- Базовая реализация (может быть переопределена в дочерних классах)
-    love.graphics.setColor(1, 0.1, 0.4, 1) --rgb(
-    love.graphics.rectangle("line", globalX, globalY, self.width, self.height)
+    
         -- Рисуем дочерние элементы
     if self.children then
         for _, child in ipairs(self.children) do
@@ -148,6 +150,11 @@ end
 function Element:draw()
     --DebugConsole.log("Drawing element at", self.x, self.y, "visible:", self.visible, self.class:typeof())
     if not self.visible then return end
+    
+    
+    
+    love.graphics.setColor(0.7, 0.6, 0.4, 1) -- hsl(256,66.6%,48.1%)
+    love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
 
     -- Сортируем детей, если нужно
     if not self._childrenSorted then

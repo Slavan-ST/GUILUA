@@ -6,7 +6,7 @@ local ScrollView = class("ScrollView", Element)
 function ScrollView:initialize(x, y, w, h, options)
     options = options or {}
     Element:initialize(x, y, w, h, options)
-    self.content = Element:new(0, 0, w - 100, h, {})
+    self.content = Element:new(10, 10, w - 10, h + 10, {})
     
     -- Параметры прокрутки
     self.scrollY = 0
@@ -32,19 +32,11 @@ function ScrollView:initialize(x, y, w, h, options)
 end
 
 function ScrollView:setContentSize(w, h)
-    
-    self:updateContentSize()
-    
-    self.content.height = self.contentHeight
-    
-    self:updateContentSize()
-    self:updateScrollLimits()
-    
-    
+
 end
 
 function ScrollView:updateScrollLimits()
-    self.maxScrollY = math.max(0, self.contentHeight )
+    self.maxScrollY = math.max(0, (self.content.contentHeight or 0) - self.height)
     self.scrollY = math.max(0, math.min(self.scrollY, self.maxScrollY))
     self.scrollBarVisible = self.maxScrollY > 0
 end
@@ -102,7 +94,7 @@ function ScrollView:onTouchMoved(event)
 end
 
 function ScrollView:drawSelf()
-  
+    self.content.height = self.contentHeight
   
     -- Включаем обрезку по области ScrollView
     love.graphics.setScissor(self.x, self.y, self.width, self.height)
@@ -114,13 +106,12 @@ function ScrollView:drawSelf()
     -- Сохраняем текущие настройки графики
     love.graphics.push()
     
-    -- Смещаем начало координат для контента
+    -- Смещаем начало координат для контента с учетом позиции ScrollView
     love.graphics.translate(self.x, self.y - self.scrollY)
     
     -- Рисуем контент (все дочерние элементы content)
-    self.content:draw()
-    
-    
+    -- Передаем 0,0 так как уже сделали трансляцию
+    self.content:drawSelf()
     
     -- Восстанавливаем настройки графики
     love.graphics.pop()
@@ -131,7 +122,7 @@ function ScrollView:drawSelf()
     -- Рисуем полосу прокрутки
     if self.scrollBarVisible and self.maxScrollY > 0 then
         local scrollAreaHeight = self.height - self.scrollBarMargin * 2
-        local scrollBarHeight = math.max(30, scrollAreaHeight * (self.height / self.content.height))
+        local scrollBarHeight = math.max(30, scrollAreaHeight * (self.height / (self.content.contentHeight or self.height)))
         local scrollBarPos = self.scrollBarMargin + (self.scrollY / self.maxScrollY) * (scrollAreaHeight - scrollBarHeight)
         
         love.graphics.setColor(self.scrollBarColor)
