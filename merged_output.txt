@@ -137,89 +137,78 @@ local Interactivity = require("src.ui.core.mixins.Interactivity")
 local ContentLayout = require("src.ui.core.mixins.ContentLayout")
 
 local Element = class("Element")
-EventDispatcher.mixin(Element)
 
+-- Применяем миксины
+Element:mixin(Hierarchy)
+Element:mixin(Visibility)
+Element:mixin(Geometry)
+Element:mixin(ZIndex)
+Element:mixin(Interactivity)
+Element:mixin(ContentLayout)
+Element:mixin(EventDispatcher)
 
-
-
-local class = require("lib.middleclass")
-local EventDispatcher = require("src.ui.core.EventDispatcher")
-
-Element.static.mixins = {Hierarchy, Visibility, Geometry, ZIndex, Interactivity, ContentLayout}
 
 function Element:initialize(x, y, w, h, options)
-    self:initMixins()
+    -- Инициализируем EventDispatcher
+    EventDispatcher.initialize(self)
+
+    -- Инициализируем миксины
+    Hierarchy.initialize(self)
+    Visibility.initialize(self)
+    Geometry.initialize(self)
+    ZIndex.initialize(self)
+    Interactivity.initialize(self)
+    ContentLayout.initialize(self)
+
+    -- Инициализация свойств
     self.x = x or 0
     self.y = y or 0
     self.width = w or 0
     self.height = h or 0
     self.zIndex = options and options.zIndex or 0
-    
-
-
-end
-
-function Element:initMixins()
-  for _, mixin in ipairs(Element.static.mixins) do
-        if mixin.init then
-            mixin.init(self)  -- Инициализация каждого миксина
-        end
-        -- Также добавляем методы из миксинов в текущий объект
-        for k, v in pairs(mixin) do
-            if not self[k] then
-                self[k] = v  -- Только если метод еще не существует
-            end
-        end
-    end
-
-    EventDispatcher.initialize(self)
 end
 
 -- Обработка события
 function Element:handleEvent(event)
--- Рассчитываем глобальные координаты с учетом родителей
-local globalX, globalY = self:toGlobal(event.x, event.y)
-
--- Проверка попадания в элемент 
-if event.x and event.y and not self:isInside(globalX, globalY) then return false -- событие не попало в элемент 
-end -- Обновляем локальные координаты относительно текущего элемента 
-event.localX = globalX - self.x event.localY = globalY - self.y -- Передаем событие в EventDispatcher 
-return self:dispatchEvent(event) 
-
+    -- Рассчитываем глобальные координаты с учетом родителей
+    local globalX, globalY = self:toGlobal(event.x, event.y)
+    
+    -- Проверка попадания в элемент
+    if event.x and event.y and not self:isInside(globalX, globalY) then return false -- событие не попало в элемент 
+    end
+    
+    -- Обновляем локальные координаты относительно текущего элемента
+    event.localX = globalX - self.x
+    event.localY = globalY - self.y
+    
+    -- Передаем событие в EventDispatcher 
+    return self:dispatchEvent(event) 
 end
 
 function Element:draw()
     if not self.visible then return end
-
     love.graphics.setColor(0.7, 0.6, 0.4, 1) -- hsl(256,66.6%,48.1%)
     love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
     
-
     if not self._childrenSorted then
         self:sortChildren()
     end
     
     
-    self:drawSelf()
-
+    
     -- Рисуем дочерние элементы
-    if self.children then
-        
+    if self.children and #self.children > 0 then
         for _, child in ipairs(self.children) do
-          
-            require("src.ui.utils.DebugConsole").log("draw", child.x, child.y, child.width, child.height)
-            
-            self.updateContentSize()
-            child:draw()
-            
+            child:drawSelf()
         end
     end
+    
+    self:drawSelf()
 end
 
 function Element:drawSelf()
   print("test")
 end
-
 
 return Element
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/Element.lua ====
@@ -298,23 +287,6 @@ function EventDispatcher:dispatchEvent(event)
     return not event._stopped
 end
 
--- Метод для добавления миксина
-function EventDispatcher.mixin(target)
-    target.initialize = EventDispatcher._wrapInit(target.initialize)
-    for k, v in pairs(EventDispatcher) do
-        if k ~= "mixin" and k ~= "_wrapInit" then
-            target[k] = v
-        end
-    end
-end
-
--- Обёртка для инициализации
-function EventDispatcher._wrapInit(origInit)
-    return function(self, ...)
-        if origInit then origInit(self, ...) end
-        EventDispatcher.initialize(self)
-    end
-end
 
 -- Проверка, можно ли обработать событие
 function EventDispatcher:canHandleEvent(event)
@@ -448,7 +420,7 @@ return UIManager
 
 local ContentLayout = {}
 
-function ContentLayout:init()
+function ContentLayout:initialize()
     self.contentWidth = 0
     self.contentHeight = 0
     self.padding = 0
@@ -459,7 +431,7 @@ function ContentLayout:updateContentSize()
     self.contentHeight = 0
     for _, child in ipairs(self.children) do
         self.contentWidth = math.max(self.contentWidth, child.x + child.width)
-        self.contentHeight = math.max(self.contentHeight, self.contentHeight + child.height)
+        self.contentHeight = math.max(self.contentHeight, child.y + child.height)
     end
 end
 
@@ -472,7 +444,7 @@ return ContentLayout
 
 local Geometry = {}
 
-function Geometry:init()
+function Geometry:initialize()
     self.x = 0
     self.y = 0
     self.width = 0
@@ -502,17 +474,16 @@ return Geometry
 
 local Hierarchy = {}
 
-function Hierarchy:init()
+function Hierarchy:initialize()
     self.parent = nil
     self.children = {}
 end
 
 function Hierarchy:addChild(child)
     if not child then
-        require("src.ui.utils.DebugConsole").log( "Child cannot be nil")
+        require("src.ui.utils.DebugConsole").log("Child cannot be nil")
         return 
     end
-    
     if child.parent then
         child.parent:removeChild(child)
     end
@@ -520,9 +491,6 @@ function Hierarchy:addChild(child)
     child.x = self.padding or 0
     child.y = (self.contentHeight or 0) + (self.padding or 0)
     table.insert(self.children, child)
-    
-    
-    
     if self.updateContentSize then self:updateContentSize() end
     if self.sortChildren then self:sortChildren() end
 end
@@ -561,7 +529,7 @@ return Hierarchy
 
 local Interactivity = {}
 
-function Interactivity:init()
+function Interactivity:initialize()
     self.enabled = true
 end
 
@@ -584,7 +552,7 @@ return Interactivity
 
 local Visibility = {}
 
-function Visibility:init()
+function Visibility:initialize()
     self.visible = true
 end
 
@@ -607,7 +575,7 @@ return Visibility
 
 local ZIndex = {}
 
-function ZIndex:init()
+function ZIndex:initialize()
     self.zIndex = 0
 end
 
@@ -616,6 +584,7 @@ function ZIndex:setZIndex(value)
     if self.parent then
         self.parent:sortChildren()
     end
+    return self
 end
 
 return ZIndex
@@ -751,7 +720,7 @@ function ScrollView:initialize(x, y, w, h, options)
     self:addEventListener("touchreleased", function(e) return self:onTouchReleased(e) end)
     self:addEventListener("touchmoved", function(e) return self:onTouchMoved(e) end)
     
-    self:addChild(self.content)
+    Element.addChild(self, self.content)
     
     require("src.ui.utils.DebugConsole").log( "Child: ".. tostring(#self.children))
 end
@@ -837,7 +806,7 @@ function ScrollView:drawSelf()
     
     -- Рисуем контент (все дочерние элементы content)
     -- Передаем 0,0 так как уже сделали трансляцию
-    self.content:drawSelf()
+    self.content:draw()
     
     -- Восстанавливаем настройки графики
     love.graphics.pop()

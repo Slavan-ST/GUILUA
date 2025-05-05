@@ -1,5 +1,5 @@
 local UIManager = require("src.ui.core.UIManager")
-local UIButton = require("src.ui.elements.UIButton")
+local UIButton = require("src.ui.elements.Button")
 local Fonts = require("src.ui.fonts.init")
 local DebugConsole = require("src.ui.utils.DebugConsole")
 local ScrollView = require("src.ui.elements.ScrollView")
@@ -27,7 +27,7 @@ function love.load()
         }
     )
     
-    scrollView:setContentSize(love.graphics.getWidth() - 100, 2000)
+
     
     local Element = require("src.ui.core.Element")
         -- Добавьте это в love.load() после создания scrollView

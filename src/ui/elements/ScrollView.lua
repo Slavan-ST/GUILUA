@@ -34,7 +34,9 @@ function ScrollView:initialize(x, y, w, h, options)
 end
 
 function ScrollView:setContentSize(w, h)
-
+    self.content.width = w
+    self.content.height = h
+    self:updateScrollLimits()
 end
 
 function ScrollView:updateScrollLimits()

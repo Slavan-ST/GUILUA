@@ -43,16 +43,10 @@ end
 
 -- Обработка события
 function Element:handleEvent(event)
-    -- Рассчитываем глобальные координаты с учетом родителей
-    local globalX, globalY = self:toGlobal(event.x, event.y)
-    
     -- Проверка попадания в элемент
-    if event.x and event.y and not self:isInside(globalX, globalY) then return false -- событие не попало в элемент 
+    if event.x and event.y and not self:isInside(event.x, event.y) then
+        return false
     end
-    
-    -- Обновляем локальные координаты относительно текущего элемента
-    event.localX = globalX - self.x
-    event.localY = globalY - self.y
     
     -- Передаем событие в EventDispatcher 
     return self:dispatchEvent(event) 
@@ -68,19 +62,17 @@ function Element:draw()
     end
     
     
-    
+    self:drawSelf()
     -- Рисуем дочерние элементы
     if self.children and #self.children > 0 then
         for _, child in ipairs(self.children) do
             child:drawSelf()
         end
     end
-    
-    self:drawSelf()
 end
 
 function Element:drawSelf()
-  print("test")
+  --метод переопределяется в дечерних классах
 end
 
 return Element
