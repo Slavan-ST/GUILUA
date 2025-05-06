@@ -10,6 +10,13 @@ function Button:initialize(x, y, w, h, text, options)
     self.onClick = options and options.onClick
     self.backgroundColor = options and options.backgroundColor or {0.5, 0.5, 0.5, 1}
     self.textColor = options and options.textColor or {1, 1, 1, 1}
+    
+    
+    self:addEventListener("touchmoved", function(event)
+        if self.pressed and not self:isInside(event.x, event.y) then
+            self.pressed = false
+        end
+    end)
 
     self:addEventListener("touchpressed", function(event)
         if self:isInside(event.x, event.y) then
@@ -18,11 +25,14 @@ function Button:initialize(x, y, w, h, text, options)
     end)
 
     self:addEventListener("touchreleased", function(event)
+      
+        self.pressed = false
+        
         if self.pressed and self:isInside(event.x, event.y) then
             self.pressed = false
             if self.onClick then self.onClick(self, event) end
-        else
-            self.pressed = false
+      
+            
         end
     end)
 end

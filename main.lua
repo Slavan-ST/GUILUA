@@ -4,6 +4,8 @@ local Fonts = require("src.ui.fonts.init")
 local DebugConsole = require("src.ui.utils.DebugConsole")
 local ScrollView = require("src.ui.elements.ScrollView")
 local Label = require("src.ui.elements.Label")
+local ThemeManager = require("src.ui.core.ThemeManager")
+
 
 local ui = UIManager:new()
 
@@ -12,7 +14,7 @@ function love.load()
     Fonts.load()
     love.graphics.setFont(Fonts.default)
     
-    
+    ThemeManager.setTheme("dark")
     
     -- Создаем ScrollView с явным указанием options
     local scrollView = ScrollView:new(
@@ -68,20 +70,17 @@ function love.load()
 
     -- Кнопка консоли
     local consoleBtn = UIButton(love.graphics.getWidth() - 210, 10, 200, 40, "КОНСОЛЬ", {
-        backgroundColor = {0.3, 0.3, 0.8, 1},
-        textColor = {1, 1, 1, 1},
+        
         onClick = function()
             DebugConsole.toggle()
         end
     })
 
     -- Тестовая кнопка
-    local testBtn = UIButton(50, 400, 200, 60, "ТЕСТ", {
-        backgroundColor = {0.2, 0.7, 0.2, 1},
-        textColor = {1, 1, 1, 1},
+    local testBtn = UIButton(love.graphics.getWidth() - 210, 50, 200, 40, "ТЕСТ", {
+        
         onClick = function()
             DebugConsole.log("Нажата тестовая кнопка")
-            testBtn:setBackgroundColor(0.8, 0.2, 0.2, 1)
         end,
         zIndex = 1
     })
