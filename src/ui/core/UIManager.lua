@@ -12,7 +12,7 @@ end
 
 function UIManager:addElement(element)
     table.insert(self.elements, element)
-    self.needsSort = true  -- Флаг для отложенной сортировки
+    self:sortElements() -- Сортируем сразу
 end
 
 function UIManager:removeElement(element)
@@ -75,7 +75,10 @@ function UIManager:handleEvent(event)
     return false
 end
 
+
 function UIManager:setFocus(element)
+    if not element or not element.interactive then return end -- 
+    
     if self.focused == element then
         return  -- уже в фокусе
     end

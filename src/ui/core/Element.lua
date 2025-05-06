@@ -8,6 +8,8 @@ local Geometry = require("src.ui.core.mixins.Geometry")
 local ZIndex = require("src.ui.core.mixins.ZIndex")
 local Interactivity = require("src.ui.core.mixins.Interactivity")
 local ContentLayout = require("src.ui.core.mixins.ContentLayout")
+local Stylable = require("src.ui.core.mixins.Stylable")
+
 
 local Element = class("Element")
 
@@ -19,7 +21,7 @@ Element:mixin(ZIndex)
 Element:mixin(Interactivity)
 Element:mixin(ContentLayout)
 Element:mixin(EventDispatcher)
-
+Element:mixin(Stylable) -- <<< Добавляем стилизуемость
 
 function Element:initialize(x, y, w, h, options)
     -- Инициализируем EventDispatcher
@@ -32,6 +34,7 @@ function Element:initialize(x, y, w, h, options)
     ZIndex.initialize(self)
     Interactivity.initialize(self)
     ContentLayout.initialize(self)
+    Stylable.initialize(self)
 
     -- Инициализация свойств
     self.x = x or 0
@@ -39,6 +42,8 @@ function Element:initialize(x, y, w, h, options)
     self.width = w or 0
     self.height = h or 0
     self.zIndex = options and options.zIndex or 0
+    
+    self:setStyle(options)
 end
 
 -- Обработка события
@@ -54,25 +59,27 @@ end
 
 function Element:draw()
     if not self.visible then return end
-    love.graphics.setColor(0.7, 0.6, 0.4, 1) -- hsl(256,66.6%,48.1%)
-    love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
-    
-    if not self._childrenSorted then
-        self:sortChildren()
-    end
-    
-    
+
+    self:sortChildren()
+
+    love.graphics.push()
+    --love.graphics.translate(self.x, self.y)
+
     self:drawSelf()
-    -- Рисуем дочерние элементы
+
     if self.children and #self.children > 0 then
         for _, child in ipairs(self.children) do
-            child:drawSelf()
+            child:draw()
         end
     end
+
+    love.graphics.pop()
 end
 
 function Element:drawSelf()
-  --метод переопределяется в дечерних классах
+    -- Рисуем фон
+    
 end
+
 
 return Element

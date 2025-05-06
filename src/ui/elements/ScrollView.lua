@@ -3,34 +3,45 @@ local Element = require("src.ui.core.Element")
 
 local ScrollView = class("ScrollView", Element)
 
+
+
 function ScrollView:initialize(x, y, w, h, options)
     options = options or {}
-    Element:initialize(x, y, w, h, options)
+    Element.initialize(self, x, y, w, h, options)
+
     self.content = Element:new(10, 10, w - 10, h + 10, {})
-    
-    -- Параметры прокрутки
+
     self.scrollY = 0
     self.maxScrollY = 0
+    self.scrollX = 0
+    self.maxScrollX = 10
+
     self.scrollBarVisible = false
-    self.scrollBarSize = options.scrollBarSize or 10
-    self.scrollBarColor = options.scrollBarColor or {0.1, 0.5, 0.5, 0.5}
-    self.scrollBarMargin = options.scrollBarMargin or 2
+    self.scrollBarSize = options.scrollBarSize or self:getStyle("scrollbar_size")
+    self.scrollBarColor = options.scrollBarColor or self:getStyle("scrollbar_color")
+    self.scrollBarMargin = options.scrollBarMargin or self:getStyle("scrollbar_margin")
+
+    
+    self.friction = self:getStyle("friction")
+    self.maxVelocity = self:getStyle("max_velocity")
+
     
     -- Для тач-событий и инерции
     self.touchId = nil
     self.lastTouchY = 0
+    self.lastTouchX = 0
     self.velocityY = 0
-    self.friction = 0.92
-    self.maxVelocity = 1000
+    
+    
     
     -- Обработчики событий
     self:addEventListener("touchpressed", function(e) return self:onTouchPressed(e) end)
     self:addEventListener("touchreleased", function(e) return self:onTouchReleased(e) end)
     self:addEventListener("touchmoved", function(e) return self:onTouchMoved(e) end)
     
-    Element.addChild(self, self.content)
+    --Element.addChild(self, self.content)
     
-    require("src.ui.utils.DebugConsole").log( "Child: ".. tostring(#self.children))
+  
 end
 
 function ScrollView:setContentSize(w, h)
@@ -39,8 +50,13 @@ function ScrollView:setContentSize(w, h)
     self:updateScrollLimits()
 end
 
+
+
 function ScrollView:updateScrollLimits()
-    self.maxScrollY = math.max(0, (self.content.contentHeight or 0) - self.height)
+    local padding = self.content.padding or 0
+    
+    self.maxScrollX = math.max(0, (self.content.contentWidth or 0) + 2 * padding - self.width)
+    self.maxScrollY = math.max(0, (self.content.contentHeight or 0) + 2 * padding - self.height)
     self.scrollY = math.max(0, math.min(self.scrollY, self.maxScrollY))
     self.scrollBarVisible = self.maxScrollY > 0
 end
@@ -63,18 +79,23 @@ function ScrollView:update(dt)
     end
 end
 
--- Обработчики тач-событий
+
+
 function ScrollView:onTouchPressed(event)
     if not self:isInside(event.x, event.y) then return false end
-    
-    if not self.touchId then
-        self.touchId = event.id
-        self.lastTouchY = event.y
-        self.velocityY = 0
-        return true
+    -- Корректируем координаты события относительно контента
+    local adjustedY = event.y + self.scrollY
+    for _, child in ipairs(self.content.children) do
+        if child:isInside(event.x, adjustedY) then
+            return child:handleEvent(event)
+        end
     end
-    return false
+    self.touchId = event.id
+    self.lastTouchY = event.y
+    self.velocityY = 0
+    return true
 end
+
 
 function ScrollView:onTouchReleased(event)
     if event.id == self.touchId then
@@ -84,9 +105,17 @@ function ScrollView:onTouchReleased(event)
     return false
 end
 
+
+
 function ScrollView:onTouchMoved(event)
     if event.id == self.touchId then
-        local deltaY = self.lastTouchY - event.y
+        -- В onTouchMoved:
+
+        local deltaX = (self.lastTouchX - event.x)
+        self.scrollX = math.max(0, math.min(self.maxScrollX, self.scrollX + deltaX))
+        
+        local deltaY = (self.lastTouchY - event.y)
+        self.scrollY = math.max(0, math.min(self.maxScrollY, self.scrollY + deltaY))
         self.lastTouchY = event.y
         
         self.velocityY = math.max(-self.maxVelocity, math.min(self.maxVelocity, deltaY * 15))
@@ -97,52 +126,42 @@ function ScrollView:onTouchMoved(event)
     return false
 end
 
+
+
 function ScrollView:drawSelf()
-    
     self.content.height = self.contentHeight
-  
-    -- Включаем обрезку по области ScrollView
+
     love.graphics.setScissor(self.x, self.y, self.width, self.height)
-    
-    -- Рисуем фон
-    love.graphics.setColor(0.9, 0.9, 0.9, 1)
+
+    -- Фон
+    love.graphics.setColor(self:getStyle("background_color"))
     love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
-    
-    -- Сохраняем текущие настройки графики
+
     love.graphics.push()
-    
-    -- Смещаем начало координат для контента с учетом позиции ScrollView
     love.graphics.translate(self.x, self.y - self.scrollY)
-    
-    -- Рисуем контент (все дочерние элементы content)
-    -- Передаем 0,0 так как уже сделали трансляцию
     self.content:draw()
-    
-    -- Восстанавливаем настройки графики
     love.graphics.pop()
-    
-    -- Выключаем обрезку
+
     love.graphics.setScissor()
-    
-    -- Рисуем полосу прокрутки
+
     if self.scrollBarVisible and self.maxScrollY > 0 then
         local scrollAreaHeight = self.height - self.scrollBarMargin * 2
         local scrollBarHeight = math.max(30, scrollAreaHeight * (self.height / (self.content.contentHeight or self.height)))
         local scrollBarPos = self.scrollBarMargin + (self.scrollY / self.maxScrollY) * (scrollAreaHeight - scrollBarHeight)
-        
+
         love.graphics.setColor(self.scrollBarColor)
-        love.graphics.rectangle("fill", 
-            self.x + self.width - self.scrollBarSize - self.scrollBarMargin, 
-            self.y + scrollBarPos, 
-            self.scrollBarSize, 
-            scrollBarHeight)
+        love.graphics.rectangle("fill",
+            self.x + self.width - self.scrollBarSize - self.scrollBarMargin,
+            self.y + scrollBarPos,
+            self.scrollBarSize,
+            scrollBarHeight
+        )
     end
 end
 
--- Методы для работы с дочерними элементами
 function ScrollView:addChild(child)
-    
     self.content:addChild(child)
+    self.content:updateContentSize()
     self:updateScrollLimits()
 end
 

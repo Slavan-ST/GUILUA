@@ -2,6 +2,7 @@ local Interactivity = {}
 
 function Interactivity:initialize()
     self.enabled = true
+    self.interactive = true
 end
 
 function Interactivity:enable()
