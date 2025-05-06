@@ -50,8 +50,8 @@ end
 function Element:handleEvent(event)
     -- Проверка попадания в элемент
     if event.x and event.y and not self:isInside(event.x, event.y) then
-        return false
-    end
+       return false
+     end
     
     -- Передаем событие в EventDispatcher 
     return self:dispatchEvent(event) 

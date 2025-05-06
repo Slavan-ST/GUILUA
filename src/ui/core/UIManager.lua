@@ -64,11 +64,11 @@ function UIManager:handleEvent(event)
     -- Перебираем от верхнего к нижнему
     for i = #self.elements, 1, -1 do
         local el = self.elements[i]
-        if el.handleEvent and el.isInside and event.x and event.y then
-            if el:isInside(event.x, event.y) then
+        if el.handleEvent and event.x and event.y then
+            --if el:isInside(event.x, event.y) then
                 if el:handleEvent(event) then
                     return true -- событие обработано, не передаём дальше
-                end
+               -- end
             end
         end
     end
