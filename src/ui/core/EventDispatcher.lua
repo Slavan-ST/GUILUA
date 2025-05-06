@@ -27,45 +27,86 @@ end
 
 -- Диспетчеризация события
 function EventDispatcher:dispatchEvent(event)
-    -- Валидация входящего события
     assert(type(event) == "table", "Event must be a table")
     assert(event.type, "Event must have a type")
 
-    -- Инициализация свойств события
     event.target = event.target or self
-    event.currentTarget = self
     event._stopped = false
+    event._immediateStopped = false
     event.stopPropagation = function() 
         event._stopped = true 
     end
-
-    -- Проверка возможности обработки события
-    if not self:canHandleEvent(event) then
-        return false
+    event.stopImmediatePropagation = function()
+        event._immediateStopped = true
+        event._stopped = true
     end
 
-    -- Обработка локальных слушателей
-    local listeners = self._listeners[event.type]
-    if listeners then
-        -- Создаем копию списка слушателей на случай его изменения во время обработки
-        local listenersCopy = {unpack(listeners)}
-        for _, callback in ipairs(listenersCopy) do
-            if not event._stopped then
+    -- Сбор цепочки от текущего объекта до корня
+    local chain = {}
+    local current = self
+    while current do
+        table.insert(chain, 1, current)  -- Вставляем в начало — чтобы сверху вниз
+        current = current.parent
+    end
+
+    -- Phase 1: Capture (from root to target)
+    for i = 1, #chain - 1 do
+        current = chain[i]
+        event.currentTarget = current
+        event.eventPhase = "capture"
+
+        if current:canHandleEvent(event) then
+            local listeners = current._listeners["oncapture_" .. event.type]
+            if listeners then
+                local copy = { unpack(listeners) }
+                for _, callback in ipairs(copy) do
+                    if event._immediateStopped then break end
+                    callback(event)
+                end
+            end
+        end
+
+        if event._stopped then break end
+    end
+
+    -- Phase 2: Target (the actual object where the event was triggered)
+    event.currentTarget = self
+    event.eventPhase = "target"
+
+    if self:canHandleEvent(event) then
+        local listeners = self._listeners[event.type]
+        if listeners then
+            local copy = { unpack(listeners) }
+            for _, callback in ipairs(copy) do
+                if event._immediateStopped then break end
                 callback(event)
             end
         end
     end
 
-    -- Обработка всплытия (если не было остановки)
-    if not event._stopped then
+    -- Phase 3: Bubbling (from target to root)
+    if event.bubbles ~= false then
+        for i = #chain - 1, 1, -1 do
+            current = chain[i]
+            event.currentTarget = current
+            event.eventPhase = "bubbling"
 
-        if self.parent and event.bubbles ~= false then
-             return self.parent:dispatchEvent(event)
+            if current:canHandleEvent(event) then
+                local listeners = current._listeners[event.type]
+                if listeners then
+                    local copy = { unpack(listeners) }
+                    for _, callback in ipairs(copy) do
+                        if event._immediateStopped then break end
+                        callback(event)
+                    end
+                end
+            end
+
+            if event._stopped then break end
         end
     end
 
-    -- Возвращаем true, если событие не было остановлено
-    return not event._stopped
+    return not event._immediateStopped
 end
 
 
