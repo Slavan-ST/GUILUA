@@ -56,22 +56,53 @@ function UIManager:update(dt)
 end
 
 
-function UIManager:handleEvent(event)
-    if not self.sorted then
-        self:sortByZIndex()
+-- src/ui/core/UIManager.lua
+
+function UIManager:findTargetElement(event)
+    if not event.x or not event.y then return nil end
+
+    -- Сортируем по z-index
+    if self.needsSort then
+        self:sortElements()
     end
 
-    -- Перебираем от верхнего к нижнему
+    local target = nil
+
+    -- Проверяем с конца (самый верхний)
     for i = #self.elements, 1, -1 do
         local el = self.elements[i]
-        if el.handleEvent and event.x and event.y then
-            --if el:isInside(event.x, event.y) then
-                if el:handleEvent(event) then
-                    return true -- событие обработано, не передаём дальше
-               -- end
+        if el.visible and el.enabled and el:isInside(event.x, event.y) then
+            target = self:checkChildrenForTarget(el, event)
+            if target then break end
+        end
+    end
+
+    return target
+end
+
+function UIManager:checkChildrenForTarget(element, event)
+    -- Если есть дочерние элементы, проверяем их рекурсивно
+    if element.children and #element.children > 0 then
+        for i = #element.children, 1, -1 do
+            local child = element.children[i]
+            if child.visible and child.enabled and child:isInside(event.x, event.y) then
+                local result = self:checkChildrenForTarget(child, event)
+                if result then return result end
             end
         end
     end
+
+    return element -- если среди детей никто не подошёл, возвращаем сам элемент
+end
+
+function UIManager:handleEvent(event)
+    local target = self:findTargetElement(event)
+
+    if target then
+        event.target = target
+        return target:dispatchEvent(event)
+    end
+
     return false
 end
 

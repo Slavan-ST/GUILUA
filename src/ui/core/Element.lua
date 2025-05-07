@@ -47,14 +47,10 @@ function Element:initialize(x, y, w, h, options)
 end
 
 -- Обработка события
+-- src/ui/core/Element.lua
+
 function Element:handleEvent(event)
-    -- Проверка попадания в элемент
-    if event.x and event.y and not self:isInside(event.x, event.y) then
-       return false
-     end
-    
-    -- Передаем событие в EventDispatcher 
-    return self:dispatchEvent(event) 
+    return self:dispatchEvent(event)
 end
 
 function Element:draw()

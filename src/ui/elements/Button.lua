@@ -20,15 +20,18 @@ function Button:initialize(x, y, w, h, text, options)
         end
     end)
     
+    -- Например, при выходе за границы экрана или при других событиях
     self:addEventListener("touchmoved", function(event)
         if self.pressed and not self:isInside(event.x, event.y) then
             self.pressed = false
         end
     end)
 
+-- 
+
     self:addEventListener("touchreleased", function(event)
       
-        
+        -- в будущем поправить чтобы при выходе за элемент всё нориально работало
         
         if self.pressed and self:isInside(event.x, event.y) then
             
