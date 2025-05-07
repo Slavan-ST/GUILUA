@@ -64,7 +64,13 @@ function love.load()
     
 
     
-    
+    local draggableBtn = UIButton(love.graphics.getWidth() - 210, 80, 200, 50, "Перетащи меня", {
+        onClick = function() DebugConsole.log("Клик!") end,
+        ondrag = function(e) DebugConsole.log("Перетаскивание на "..e.x..", "..e.y) end,
+        ondragstart = function(e) DebugConsole.log("Начало перетаскивания") end,
+        ondragend = function(e) DebugConsole.log("Конец перетаскивания") end
+    })
+    ui:addElement(draggableBtn)
     
     
 

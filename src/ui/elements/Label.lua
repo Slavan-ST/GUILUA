@@ -14,6 +14,8 @@ function Label:initialize(x, y, text, color, options)
     self.wrap = options.wrap or false -- Перенос текста
     self.limit = options.limit -- Максимальная ширина текста
     
+    
+    
     -- Вычисляем размеры при инициализации
     self:updateDimensions()
 end

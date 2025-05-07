@@ -9,6 +9,9 @@ local ZIndex = require("src.ui.core.mixins.ZIndex")
 local Interactivity = require("src.ui.core.mixins.Interactivity")
 local ContentLayout = require("src.ui.core.mixins.ContentLayout")
 local Stylable = require("src.ui.core.mixins.Stylable")
+local Draggable = require("src.ui.core.mixins.Draggable")
+
+
 
 
 local Element = class("Element")
@@ -22,6 +25,7 @@ Element:mixin(Interactivity)
 Element:mixin(ContentLayout)
 Element:mixin(EventDispatcher)
 Element:mixin(Stylable) -- <<< Добавляем стилизуемость
+Element:mixin(Draggable)
 
 function Element:initialize(x, y, w, h, options)
     -- Инициализируем EventDispatcher
@@ -35,12 +39,14 @@ function Element:initialize(x, y, w, h, options)
     Interactivity.initialize(self)
     ContentLayout.initialize(self)
     Stylable.initialize(self)
-
+    Draggable.initialize(self)
+    
     -- Инициализация свойств
     self.x = x or 0
     self.y = y or 0
     self.width = w or 0
     self.height = h or 0
+    self.pressed = false
     self.zIndex = options and options.zIndex or 0
     
     self:setStyle(options)

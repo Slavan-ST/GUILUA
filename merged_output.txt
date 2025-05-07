@@ -3,11 +3,13 @@
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/main.lua ====
 
 local UIManager = require("src.ui.core.UIManager")
-local UIButton = require("src.ui.elements.UIButton")
+local UIButton = require("src.ui.elements.Button")
 local Fonts = require("src.ui.fonts.init")
 local DebugConsole = require("src.ui.utils.DebugConsole")
 local ScrollView = require("src.ui.elements.ScrollView")
 local Label = require("src.ui.elements.Label")
+local ThemeManager = require("src.ui.core.ThemeManager")
+
 
 local ui = UIManager:new()
 
@@ -16,7 +18,7 @@ function love.load()
     Fonts.load()
     love.graphics.setFont(Fonts.default)
     
-    
+    ThemeManager.setTheme("dark")
     
     -- Создаем ScrollView с явным указанием options
     local scrollView = ScrollView:new(
@@ -31,7 +33,7 @@ function love.load()
         }
     )
     
-    scrollView:setContentSize(love.graphics.getWidth() - 100, 2000)
+
     
     local Element = require("src.ui.core.Element")
         -- Добавьте это в love.load() после создания scrollView
@@ -72,20 +74,17 @@ function love.load()
 
     -- Кнопка консоли
     local consoleBtn = UIButton(love.graphics.getWidth() - 210, 10, 200, 40, "КОНСОЛЬ", {
-        backgroundColor = {0.3, 0.3, 0.8, 1},
-        textColor = {1, 1, 1, 1},
+        
         onClick = function()
             DebugConsole.toggle()
         end
     })
 
     -- Тестовая кнопка
-    local testBtn = UIButton(50, 400, 200, 60, "ТЕСТ", {
-        backgroundColor = {0.2, 0.7, 0.2, 1},
-        textColor = {1, 1, 1, 1},
+    local testBtn = UIButton(love.graphics.getWidth() - 210, 50, 200, 40, "ТЕСТ", {
+        
         onClick = function()
             DebugConsole.log("Нажата тестовая кнопка")
-            testBtn:setBackgroundColor(0.8, 0.2, 0.2, 1)
         end,
         zIndex = 1
     })
@@ -135,6 +134,8 @@ local Geometry = require("src.ui.core.mixins.Geometry")
 local ZIndex = require("src.ui.core.mixins.ZIndex")
 local Interactivity = require("src.ui.core.mixins.Interactivity")
 local ContentLayout = require("src.ui.core.mixins.ContentLayout")
+local Stylable = require("src.ui.core.mixins.Stylable")
+
 
 local Element = class("Element")
 
@@ -146,7 +147,7 @@ Element:mixin(ZIndex)
 Element:mixin(Interactivity)
 Element:mixin(ContentLayout)
 Element:mixin(EventDispatcher)
-
+Element:mixin(Stylable) -- <<< Добавляем стилизуемость
 
 function Element:initialize(x, y, w, h, options)
     -- Инициализируем EventDispatcher
@@ -159,56 +160,50 @@ function Element:initialize(x, y, w, h, options)
     ZIndex.initialize(self)
     Interactivity.initialize(self)
     ContentLayout.initialize(self)
+    Stylable.initialize(self)
 
     -- Инициализация свойств
     self.x = x or 0
     self.y = y or 0
     self.width = w or 0
     self.height = h or 0
+    self.pressed = false
     self.zIndex = options and options.zIndex or 0
+    
+    self:setStyle(options)
 end
 
 -- Обработка события
+-- src/ui/core/Element.lua
+
 function Element:handleEvent(event)
-    -- Рассчитываем глобальные координаты с учетом родителей
-    local globalX, globalY = self:toGlobal(event.x, event.y)
-    
-    -- Проверка попадания в элемент
-    if event.x and event.y and not self:isInside(globalX, globalY) then return false -- событие не попало в элемент 
-    end
-    
-    -- Обновляем локальные координаты относительно текущего элемента
-    event.localX = globalX - self.x
-    event.localY = globalY - self.y
-    
-    -- Передаем событие в EventDispatcher 
-    return self:dispatchEvent(event) 
+    return self:dispatchEvent(event)
 end
 
 function Element:draw()
     if not self.visible then return end
-    love.graphics.setColor(0.7, 0.6, 0.4, 1) -- hsl(256,66.6%,48.1%)
-    love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
-    
-    if not self._childrenSorted then
-        self:sortChildren()
-    end
-    
-    
-    
-    -- Рисуем дочерние элементы
+
+    self:sortChildren()
+
+    love.graphics.push()
+    --love.graphics.translate(self.x, self.y)
+
+    self:drawSelf()
+
     if self.children and #self.children > 0 then
         for _, child in ipairs(self.children) do
-            child:drawSelf()
+            child:draw()
         end
     end
-    
-    self:drawSelf()
+
+    love.graphics.pop()
 end
 
 function Element:drawSelf()
-  print("test")
+    -- Рисуем фон
+    
 end
+
 
 return Element
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/Element.lua ====
@@ -246,45 +241,86 @@ end
 
 -- Диспетчеризация события
 function EventDispatcher:dispatchEvent(event)
-    -- Валидация входящего события
     assert(type(event) == "table", "Event must be a table")
     assert(event.type, "Event must have a type")
 
-    -- Инициализация свойств события
     event.target = event.target or self
-    event.currentTarget = self
     event._stopped = false
+    event._immediateStopped = false
     event.stopPropagation = function() 
         event._stopped = true 
     end
-
-    -- Проверка возможности обработки события
-    if not self:canHandleEvent(event) then
-        return false
+    event.stopImmediatePropagation = function()
+        event._immediateStopped = true
+        event._stopped = true
     end
 
-    -- Обработка локальных слушателей
-    local listeners = self._listeners[event.type]
-    if listeners then
-        -- Создаем копию списка слушателей на случай его изменения во время обработки
-        local listenersCopy = {unpack(listeners)}
-        for _, callback in ipairs(listenersCopy) do
-            if not event._stopped then
+    -- Сбор цепочки от текущего объекта до корня
+    local chain = {}
+    local current = self
+    while current do
+        table.insert(chain, 1, current)  -- Вставляем в начало — чтобы сверху вниз
+        current = current.parent
+    end
+
+    -- Phase 1: Capture (from root to target)
+    for i = 1, #chain - 1 do
+        current = chain[i]
+        event.currentTarget = current
+        event.eventPhase = "capture"
+
+        if current:canHandleEvent(event) then
+            local listeners = current._listeners["oncapture_" .. event.type]
+            if listeners then
+                local copy = { unpack(listeners) }
+                for _, callback in ipairs(copy) do
+                    if event._immediateStopped then break end
+                    callback(event)
+                end
+            end
+        end
+
+        if event._stopped then break end
+    end
+
+    -- Phase 2: Target (the actual object where the event was triggered)
+    event.currentTarget = self
+    event.eventPhase = "target"
+
+    if self:canHandleEvent(event) then
+        local listeners = self._listeners[event.type]
+        if listeners then
+            local copy = { unpack(listeners) }
+            for _, callback in ipairs(copy) do
+                if event._immediateStopped then break end
                 callback(event)
             end
         end
     end
 
-    -- Обработка всплытия (если не было остановки)
-    if not event._stopped then
+    -- Phase 3: Bubbling (from target to root)
+    if event.bubbles ~= false then
+        for i = #chain - 1, 1, -1 do
+            current = chain[i]
+            event.currentTarget = current
+            event.eventPhase = "bubbling"
 
-        if self.parent and event.bubbles ~= false then
-             return self.parent:dispatchEvent(event)
+            if current:canHandleEvent(event) then
+                local listeners = current._listeners[event.type]
+                if listeners then
+                    local copy = { unpack(listeners) }
+                    for _, callback in ipairs(copy) do
+                        if event._immediateStopped then break end
+                        callback(event)
+                    end
+                end
+            end
+
+            if event._stopped then break end
         end
     end
 
-    -- Возвращаем true, если событие не было остановлено
-    return not event._stopped
+    return not event._immediateStopped
 end
 
 
@@ -298,23 +334,89 @@ return EventDispatcher
 
 
 
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/ThemeManager.lua ====
+
+-- src/ui/core/ThemeManager.lua
+
+local ThemeManager = {}
+
+-- Таблица для хранения тем
+ThemeManager.themes = {
+    default = {
+        scrollbar_size = 10,
+        scrollbar_margin = 2,
+        scrollbar_color = {0.1, 0.5, 0.5, 0.5},
+
+        background_color = {0.9, 0.9, 0.9, 1},
+        bounding_box_color = {0.7, 0.6, 0.4, 1},
+
+        touch_scroll_multiplier = 15,
+        friction = 0.92,
+        max_velocity = 1000,
+    },
+    dark = {
+        scrollbar_size = 8,
+        scrollbar_margin = 3,
+        scrollbar_color = {0.8, 0.3, 0.3, 0.6},
+
+        background_color = {0.2, 0.2, 0.2, 1},
+        bounding_box_color = {0.5, 0.5, 0.5, 1},
+
+        touch_scroll_multiplier = 18,
+        friction = 0.95,
+        max_velocity = 1200,
+    }
+}
+
+-- Текущая активная тема
+ThemeManager.currentTheme = "default"
+
+-- Получить значение из текущей темы с fallback к дефолту
+function ThemeManager.get(key, fallback)
+    local currentTheme = ThemeManager.themes[ThemeManager.currentTheme]
+    if currentTheme and currentTheme[key] ~= nil then
+        return currentTheme[key]
+    end
+    return ThemeManager.themes.default[key] or fallback
+end
+
+-- Установить текущую тему
+function ThemeManager.setTheme(name)
+    if ThemeManager.themes[name] then
+        ThemeManager.currentTheme = name
+    else
+        error("Unknown theme: " .. tostring(name))
+    end
+end
+
+return ThemeManager
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/ThemeManager.lua ====
+
+
+
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/UIManager.lua ====
 
 local UIManager = {}
 UIManager.__index = UIManager
 
+
+-- src/ui/core/UIManager.lua
+
 function UIManager:new()
     local obj = {
         elements = {},
-        sorted = false
+        focused = nil,
+        interactionTarget = nil,     -- Элемент, с которым начато взаимодействие
+        interactionStarted = false,  -- Флаг начала взаимодействия
     }
     setmetatable(obj, self)
     return obj
 end
 
+
 function UIManager:addElement(element)
     table.insert(self.elements, element)
-    self.needsSort = true  -- Флаг для отложенной сортировки
+    self:sortElements() -- Сортируем сразу
 end
 
 function UIManager:removeElement(element)
@@ -358,26 +460,107 @@ function UIManager:update(dt)
 end
 
 
-function UIManager:handleEvent(event)
-    if not self.sorted then
-        self:sortByZIndex()
+-- src/ui/core/UIManager.lua
+
+function UIManager:findTargetElement(event)
+    if not event.x or not event.y then return nil end
+
+    -- Сортируем по z-index
+    if self.needsSort then
+        self:sortElements()
     end
 
-    -- Перебираем от верхнего к нижнему
+    local target = nil
+
+    -- Проверяем с конца (самый верхний)
     for i = #self.elements, 1, -1 do
         local el = self.elements[i]
-        if el.handleEvent and el.isInside and event.x and event.y then
-            if el:isInside(event.x, event.y) then
-                if el:handleEvent(event) then
-                    return true -- событие обработано, не передаём дальше
-                end
+        if el.visible and el.enabled and el:isInside(event.x, event.y) then
+            target = self:checkChildrenForTarget(el, event)
+            if target then break end
+        end
+    end
+
+    return target
+end
+
+function UIManager:checkChildrenForTarget(element, event)
+    -- Если есть дочерние элементы, проверяем их рекурсивно
+    if element.children and #element.children > 0 then
+        for i = #element.children, 1, -1 do
+            local child = element.children[i]
+            if child.visible and child.enabled and child:isInside(event.x, event.y) then
+                local result = self:checkChildrenForTarget(child, event)
+                if result then return result end
             end
         end
     end
+
+    return element -- если среди детей никто не подошёл, возвращаем сам элемент
+end
+
+function UIManager:handleEvent(event)
+    if not event.x or not event.y then
+        -- События без координат (например, клавиатурные) обрабатываются как раньше
+        if self.focused and self.focused:handleEvent(event) then
+            return true
+        end
+        return false
+    end
+
+    local isPress = event.type == "mousepressed" or event.type == "touchpressed"
+    local isRelease = event.type == "mousereleased" or event.type == "touchreleased"
+    local isMove = event.type == "mousemoved"
+
+    -- Если есть активное взаимодействие
+    if self.interactionTarget then
+        event.target = self.interactionTarget
+        event.currentTarget = self.interactionTarget
+
+        -- Для release и move продолжаем отправлять событие interactionTarget
+        if isRelease or isMove then
+            if self.interactionTarget.visible and self.interactionTarget.enabled then
+                local result = self.interactionTarget:handleEvent(event)
+
+                if isRelease then
+                    self.interactionTarget.pressed = false
+                    self.interactionTarget = nil
+                    self.interactionStarted = false
+                end
+
+                return result
+            else
+                -- Элемент больше не активен, прекращаем взаимодействие
+                self.interactionTarget = nil
+                self.interactionStarted = false
+                return false
+            end
+        end
+    end
+
+    -- Поиск нового целевого элемента только при press или move вне текущего
+    local target = self:findTargetElement(event)
+
+    if target then
+        event.target = target
+        event.currentTarget = target
+
+        if isPress then
+            self.interactionTarget = target
+            self.interactionStarted = true
+            target.pressed = true
+        end
+
+        return target:handleEvent(event)
+    end
+
     return false
 end
 
+
 function UIManager:setFocus(element)
+    if not element or not element.interactive then return end -- 
+    
     if self.focused == element then
         return  -- уже в фокусе
     end
@@ -531,6 +714,7 @@ local Interactivity = {}
 
 function Interactivity:initialize()
     self.enabled = true
+    self.interactive = true
 end
 
 function Interactivity:enable()
@@ -545,6 +729,81 @@ end
 
 return Interactivity
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Interactivity.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Stylable.lua ====
+
+
+local ThemeManager = require("src.ui.core.ThemeManager")
+
+local Stylable = {}
+
+function Stylable:initialize()
+    -- Стилевые свойства, которые могут быть переопределены через options или взяты из темы
+    self.style = {
+        background_color = nil,
+        border_color = nil,
+        border_width = nil,
+        padding = nil,
+        margin = nil,
+        font = nil,
+        font_size = nil,
+        corner_radius = nil,
+    }
+
+    -- Текущая тема — может изменяться глобально
+    self.currentTheme = ThemeManager.currentTheme
+end
+
+-- Обновление стиля из опций
+function Stylable:setStyle(options)
+    if not options then return end
+
+    for k, v in pairs(options) do
+        if self.style[k] ~= nil then
+            self.style[k] = v
+        end
+    end
+end
+
+-- Получение значения стиля с fallback к текущей теме
+function Stylable:getStyle(key)
+    local value = self.style[key]
+    if value ~= nil then
+        return value
+    end
+
+    return ThemeManager.get(key)
+end
+
+-- Установка цвета фона
+function Stylable:setBackgroundColor(color)
+    self.style.background_color = color
+end
+
+-- Установка цвета рамки
+function Stylable:setBorderColor(color)
+    self.style.border_color = color
+end
+
+-- Установка толщины рамки
+function Stylable:setBorderWidth(width)
+    self.style.border_width = width
+end
+
+-- Установка внутреннего отступа
+function Stylable:setPadding(padding)
+    self.style.padding = padding
+end
+
+-- Установка внешнего отступа
+function Stylable:setMargin(margin)
+    self.style.margin = margin
+end
+
+return Stylable
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Stylable.lua ====
 
 
 
@@ -589,6 +848,79 @@ end
 
 return ZIndex
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/ZIndex.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/Button.lua ====
+
+local class = require("lib.middleclass")
+local Element = require("src.ui.core.Element")
+
+local Button = class("Button", Element)
+
+function Button:initialize(x, y, w, h, text, options)
+    Element.initialize(self, x, y, w, h, options)
+    self.text = text or "Button"
+    self.pressed = false
+    self.onClick = options and options.onClick
+    self.backgroundColor = options and options.backgroundColor or {0.5, 0.5, 0.5, 1}
+    self.textColor = options and options.textColor or {1, 1, 1, 1}
+    
+    
+    
+
+    self:addEventListener("touchpressed", function(event)
+        if self:isInside(event.x, event.y) then
+            self.pressed = true
+        end
+    end)
+    
+    -- Например, при выходе за границы экрана или при других событиях
+    self:addEventListener("touchmoved", function(event)
+        if self.pressed and not self:isInside(event.x, event.y) then
+            self.pressed = false
+        end
+    end)
+
+-- 
+
+    self:addEventListener("touchreleased", function(event)
+      
+        -- в будущем поправить чтобы при выходе за элемент всё нориально работало
+        
+        if self.pressed and self:isInside(event.x, event.y) then
+            
+            if self.onClick then self.onClick(self, event) end
+      
+            
+        end
+        
+        self.pressed = false
+    end)
+end
+
+function Button:draw()
+    if not self.visible then return end
+
+    local bgColor = self.pressed and {0.4, 0.4, 1} or {0.2, 0.2, 0.8}
+    love.graphics.setColor(bgColor)
+    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
+
+    love.graphics.setColor(1, 1, 1)
+    love.graphics.printf(self.text, self.x, self.y + self.height / 2 - 6, self.width, "center")
+
+    -- Debug frame
+    love.graphics.setColor(1, 1, 1, 0.5)
+    love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
+
+    -- Отрисовка дочерних (если есть)
+    for _, child in ipairs(self.children) do
+        child:draw()
+    end
+end
+
+return Button
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/Button.lua ====
 
 
 
@@ -695,42 +1027,60 @@ local Element = require("src.ui.core.Element")
 
 local ScrollView = class("ScrollView", Element)
 
+
+
 function ScrollView:initialize(x, y, w, h, options)
     options = options or {}
-    Element:initialize(x, y, w, h, options)
+    Element.initialize(self, x, y, w, h, options)
+
     self.content = Element:new(10, 10, w - 10, h + 10, {})
-    
-    -- Параметры прокрутки
+
     self.scrollY = 0
     self.maxScrollY = 0
+    self.scrollX = 0
+    self.maxScrollX = 10
+
     self.scrollBarVisible = false
-    self.scrollBarSize = options.scrollBarSize or 10
-    self.scrollBarColor = options.scrollBarColor or {0.1, 0.5, 0.5, 0.5}
-    self.scrollBarMargin = options.scrollBarMargin or 2
+    self.scrollBarSize = options.scrollBarSize or self:getStyle("scrollbar_size")
+    self.scrollBarColor = options.scrollBarColor or self:getStyle("scrollbar_color")
+    self.scrollBarMargin = options.scrollBarMargin or self:getStyle("scrollbar_margin")
+
+    
+    self.friction = self:getStyle("friction")
+    self.maxVelocity = self:getStyle("max_velocity")
+
     
     -- Для тач-событий и инерции
     self.touchId = nil
     self.lastTouchY = 0
+    self.lastTouchX = 0
     self.velocityY = 0
-    self.friction = 0.92
-    self.maxVelocity = 1000
+    
+    
     
     -- Обработчики событий
     self:addEventListener("touchpressed", function(e) return self:onTouchPressed(e) end)
     self:addEventListener("touchreleased", function(e) return self:onTouchReleased(e) end)
     self:addEventListener("touchmoved", function(e) return self:onTouchMoved(e) end)
     
-    Element.addChild(self, self.content)
+    --Element.addChild(self, self.content)
     
-    require("src.ui.utils.DebugConsole").log( "Child: ".. tostring(#self.children))
+  
 end
 
 function ScrollView:setContentSize(w, h)
-
+    self.content.width = w
+    self.content.height = h
+    self:updateScrollLimits()
 end
 
+
+
 function ScrollView:updateScrollLimits()
-    self.maxScrollY = math.max(0, (self.content.contentHeight or 0) - self.height)
+    local padding = self.content.padding or 0
+    
+    self.maxScrollX = math.max(0, (self.content.contentWidth or 0) + 2 * padding - self.width)
+    self.maxScrollY = math.max(0, (self.content.contentHeight or 0) + 2 * padding - self.height)
     self.scrollY = math.max(0, math.min(self.scrollY, self.maxScrollY))
     self.scrollBarVisible = self.maxScrollY > 0
 end
@@ -753,18 +1103,23 @@ function ScrollView:update(dt)
     end
 end
 
--- Обработчики тач-событий
+
+
 function ScrollView:onTouchPressed(event)
     if not self:isInside(event.x, event.y) then return false end
-    
-    if not self.touchId then
-        self.touchId = event.id
-        self.lastTouchY = event.y
-        self.velocityY = 0
-        return true
+    -- Корректируем координаты события относительно контента
+    local adjustedY = event.y + self.scrollY
+    for _, child in ipairs(self.content.children) do
+        if child:isInside(event.x, adjustedY) then
+            return child:handleEvent(event)
+        end
     end
-    return false
+    self.touchId = event.id
+    self.lastTouchY = event.y
+    self.velocityY = 0
+    return true
 end
+
 
 function ScrollView:onTouchReleased(event)
     if event.id == self.touchId then
@@ -774,9 +1129,17 @@ function ScrollView:onTouchReleased(event)
     return false
 end
 
+
+
 function ScrollView:onTouchMoved(event)
     if event.id == self.touchId then
-        local deltaY = self.lastTouchY - event.y
+        -- В onTouchMoved:
+
+        local deltaX = (self.lastTouchX - event.x)
+        self.scrollX = math.max(0, math.min(self.maxScrollX, self.scrollX + deltaX))
+        
+        local deltaY = (self.lastTouchY - event.y)
+        self.scrollY = math.max(0, math.min(self.maxScrollY, self.scrollY + deltaY))
         self.lastTouchY = event.y
         
         self.velocityY = math.max(-self.maxVelocity, math.min(self.maxVelocity, deltaY * 15))
@@ -787,52 +1150,42 @@ function ScrollView:onTouchMoved(event)
     return false
 end
 
+
+
 function ScrollView:drawSelf()
-    
     self.content.height = self.contentHeight
-  
-    -- Включаем обрезку по области ScrollView
+
     love.graphics.setScissor(self.x, self.y, self.width, self.height)
-    
-    -- Рисуем фон
-    love.graphics.setColor(0.9, 0.9, 0.9, 1)
+
+    -- Фон
+    love.graphics.setColor(self:getStyle("background_color"))
     love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
-    
-    -- Сохраняем текущие настройки графики
+
     love.graphics.push()
-    
-    -- Смещаем начало координат для контента с учетом позиции ScrollView
     love.graphics.translate(self.x, self.y - self.scrollY)
-    
-    -- Рисуем контент (все дочерние элементы content)
-    -- Передаем 0,0 так как уже сделали трансляцию
     self.content:draw()
-    
-    -- Восстанавливаем настройки графики
     love.graphics.pop()
-    
-    -- Выключаем обрезку
+
     love.graphics.setScissor()
-    
-    -- Рисуем полосу прокрутки
+
     if self.scrollBarVisible and self.maxScrollY > 0 then
         local scrollAreaHeight = self.height - self.scrollBarMargin * 2
         local scrollBarHeight = math.max(30, scrollAreaHeight * (self.height / (self.content.contentHeight or self.height)))
         local scrollBarPos = self.scrollBarMargin + (self.scrollY / self.maxScrollY) * (scrollAreaHeight - scrollBarHeight)
-        
+
         love.graphics.setColor(self.scrollBarColor)
-        love.graphics.rectangle("fill", 
-            self.x + self.width - self.scrollBarSize - self.scrollBarMargin, 
-            self.y + scrollBarPos, 
-            self.scrollBarSize, 
-            scrollBarHeight)
+        love.graphics.rectangle("fill",
+            self.x + self.width - self.scrollBarSize - self.scrollBarMargin,
+            self.y + scrollBarPos,
+            self.scrollBarSize,
+            scrollBarHeight
+        )
     end
 end
 
--- Методы для работы с дочерними элементами
 function ScrollView:addChild(child)
-    
     self.content:addChild(child)
+    self.content:updateContentSize()
     self:updateScrollLimits()
 end
 
@@ -843,63 +1196,6 @@ end
 
 return ScrollView
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/ScrollView.lua ====
-
-
-
--- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/UIButton.lua ====
-
-local class = require("lib.middleclass")
-local Element = require("src.ui.core.Element")
-
-local Button = class("Button", Element)
-
-function Button:initialize(x, y, w, h, text, options)
-    Element.initialize(self, x, y, w, h, options)
-    self.text = text or "Button"
-    self.pressed = false
-    self.onClick = options and options.onClick
-    self.backgroundColor = options and options.backgroundColor or {0.5, 0.5, 0.5, 1}
-    self.textColor = options and options.textColor or {1, 1, 1, 1}
-
-    self:addEventListener("touchpressed", function(event)
-        if self:isInside(event.x, event.y) then
-            require("src.ui.utils.DebugConsole").log("press")
-            self.pressed = true
-        end
-    end)
-
-    self:addEventListener("touchreleased", function(event)
-        if self.pressed and self:isInside(event.x, event.y) then
-            self.pressed = false
-            if self.onClick then self.onClick(self, event) end
-        else
-            self.pressed = false
-        end
-    end)
-end
-
-function Button:draw()
-    if not self.visible then return end
-
-    local bgColor = self.pressed and {0.4, 0.4, 1} or {0.2, 0.2, 0.8}
-    love.graphics.setColor(bgColor)
-    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
-
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.printf(self.text, self.x, self.y + self.height / 2 - 6, self.width, "center")
-
-    -- Debug frame
-    love.graphics.setColor(1, 1, 1, 0.5)
-    love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
-
-    -- Отрисовка дочерних (если есть)
-    for _, child in ipairs(self.children) do
-        child:draw()
-    end
-end
-
-return Button
--- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/UIButton.lua ====
 
 
 

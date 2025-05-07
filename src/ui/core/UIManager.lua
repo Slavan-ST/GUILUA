@@ -1,14 +1,20 @@
 local UIManager = {}
 UIManager.__index = UIManager
 
+
+-- src/ui/core/UIManager.lua
+
 function UIManager:new()
     local obj = {
         elements = {},
-        sorted = false
+        focused = nil,
+        interactionTarget = nil,     -- Элемент, с которым начато взаимодействие
+        interactionStarted = false,  -- Флаг начала взаимодействия
     }
     setmetatable(obj, self)
     return obj
 end
+
 
 function UIManager:addElement(element)
     table.insert(self.elements, element)
@@ -96,11 +102,58 @@ function UIManager:checkChildrenForTarget(element, event)
 end
 
 function UIManager:handleEvent(event)
+    if not event.x or not event.y then
+        -- События без координат (например, клавиатурные) обрабатываются как раньше
+        if self.focused and self.focused:handleEvent(event) then
+            return true
+        end
+        return false
+    end
+
+    local isPress = event.type == "mousepressed" or event.type == "touchpressed"
+    local isRelease = event.type == "mousereleased" or event.type == "touchreleased"
+    local isMove = event.type == "mousemoved"
+
+    -- Если есть активное взаимодействие
+    if self.interactionTarget then
+        event.target = self.interactionTarget
+        event.currentTarget = self.interactionTarget
+
+        -- Для release и move продолжаем отправлять событие interactionTarget
+        if isRelease or isMove then
+            if self.interactionTarget.visible and self.interactionTarget.enabled then
+                local result = self.interactionTarget:handleEvent(event)
+
+                if isRelease then
+                    self.interactionTarget.pressed = false
+                    self.interactionTarget = nil
+                    self.interactionStarted = false
+                end
+
+                return result
+            else
+                -- Элемент больше не активен, прекращаем взаимодействие
+                self.interactionTarget = nil
+                self.interactionStarted = false
+                return false
+            end
+        end
+    end
+
+    -- Поиск нового целевого элемента только при press или move вне текущего
     local target = self:findTargetElement(event)
 
     if target then
         event.target = target
-        return target:dispatchEvent(event)
+        event.currentTarget = target
+
+        if isPress then
+            self.interactionTarget = target
+            self.interactionStarted = true
+            target.pressed = true
+        end
+
+        return target:handleEvent(event)
     end
 
     return false
