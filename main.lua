@@ -43,12 +43,7 @@ function love.load()
     
     
     
-    
-    -- Тестовый drop-таргет
-    local dropZone = Element:new(10, 100, 200, 200, { backgroundColor = {0.3, 0.3, 0.3, 1} })
-    
-    
-    ui:addElement(dropZone)
+
     
 
     
@@ -79,14 +74,23 @@ function love.load()
     ui:addElement(scrollView)
     
 
+        -- Тестовый drop-таргет
+    local dropZone = Element:new(10, 100, 200, 200, { backgroundColor = {0.3, 0.3, 0.3, 1} })
+    
+    
+    ui:addElement(dropZone)
     
     local draggableBtn = UIButton(love.graphics.getWidth() - 210, 80, 200, 50, "Перетащи меня", {
         onClick = function() DebugConsole.log("Клик!") end,
-        drag = function(e) DebugConsole.log("Перетаскивание на "..e.x..", "..e.y) end,
-        dragstart = function(e) DebugConsole.log("Начало перетаскивания") end,
-        dragend = function(e) DebugConsole.log("Конец перетаскивания") end
+        dragstart = function(event) DebugConsole.log("Начало драга:", event.x, event.y) end,
+        drag = function(event) DebugConsole.log("Драг в позиции:", event.x, event.y) end,
+        dtagend = function(event) DebugConsole.log("Конец драга:", event.x, event.y) end
     })
     ui:addElement(draggableBtn)
+    
+  
+    
+    
     
     
 
