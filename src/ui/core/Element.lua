@@ -11,7 +11,7 @@ local ContentLayout = require("src.ui.core.mixins.ContentLayout")
 local Stylable = require("src.ui.core.mixins.Stylable")
 local Draggable = require("src.ui.core.mixins.Draggable")
 local DropTarget = require("src.ui.core.mixins.DropTarget")
-
+local Animation = require("src.ui.core.mixins.Animation")
 
 
 
@@ -28,10 +28,11 @@ Element:mixin(EventDispatcher)
 Element:mixin(Stylable) -- <<< Добавляем стилизуемость
 Element:mixin(Draggable)
 Element:mixin(DropTarget)
+Element:mixin(Animation)
 
 function Element:initialize(x, y, w, h, options)
   
-   self.options = options
+   self.options = options or {}
   
     -- Инициализируем EventDispatcher
     EventDispatcher.initialize(self)
@@ -46,6 +47,7 @@ function Element:initialize(x, y, w, h, options)
     Stylable.initialize(self)
     Draggable.initialize(self)
     DropTarget.initialize(self)
+    Animation.initialize(self)
     
     -- Инициализация свойств
     self.x = x or 0
@@ -85,6 +87,11 @@ function Element:draw()
     end
 
     love.graphics.pop()
+end
+
+function Element:update(dt)
+    self:updateAnimations(dt) -- <<< Добавьте это
+    -- ... остальной код ...
 end
 
 function Element:drawSelf()

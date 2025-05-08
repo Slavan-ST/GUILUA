@@ -21,13 +21,11 @@ function Stylable:initialize()
 end
 
 -- Обновление стиля из опций
+-- Обновление стиля из опций
 function Stylable:setStyle(options)
     if not options then return end
-
     for k, v in pairs(options) do
-        if self.style[k] ~= nil then
-            self.style[k] = v
-        end
+        self.style[k] = v  -- Просто устанавливаем все ключи из options
     end
 end
 
