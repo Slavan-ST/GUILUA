@@ -75,16 +75,18 @@ function love.load()
     
 
         -- Тестовый drop-таргет
-    local dropZone = Element:new(10, 100, 200, 200, { backgroundColor = {0.3, 0.3, 0.3, 1} })
+    local dropZone = Element:new(10, 100, 200, 200, { backgroundColor = {0.3, 0.3, 0.3, 1},  
+      drop = function(event) DebugConsole.log("drop в позиции:", event.x, event.y) end,
+    })
     
     
     ui:addElement(dropZone)
     
     local draggableBtn = UIButton(love.graphics.getWidth() - 210, 80, 200, 50, "Перетащи меня", {
         onClick = function() DebugConsole.log("Клик!") end,
-        dragstart = function(event) DebugConsole.log("Начало драга:", event.x, event.y) end,
-        drag = function(event) DebugConsole.log("Драг в позиции:", event.x, event.y) end,
-        dtagend = function(event) DebugConsole.log("Конец драга:", event.x, event.y) end
+        dragstart = function(event) end,
+        drag = function(event) end,
+        dtagend = function(event)  end
     })
     ui:addElement(draggableBtn)
     

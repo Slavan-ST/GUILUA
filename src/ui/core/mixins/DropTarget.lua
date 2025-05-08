@@ -2,6 +2,10 @@ local DropTarget = {}
 
 function DropTarget:initialize()
     self.dropEnabled = true
+    
+    if self.options.drop then
+      self:addEventListener("drop", function(e) return self.options.drop(e) end)
+    end
 end
 
 function DropTarget:enableDrop()
@@ -17,8 +21,8 @@ end
 -- Вызывается при drop'е другого элемента на нас
 function DropTarget:onDrop(draggedElement, event)
     if not self.dropEnabled then return end
-    require("src.ui.utils.DebugConsole").log("drop")
-    self:dispatchEvent({ type = "drop", element = draggedElement })
+    
+    self:dispatchEvent({ type = "drop", x = self.x, y = self.y  })
 end
 
 return DropTarget

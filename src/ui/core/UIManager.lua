@@ -115,6 +115,7 @@ function UIManager:findTargetElement(event)
     return target
 end
 
+
 function UIManager:checkChildrenForTarget(element, event)
     -- Если есть дочерние элементы, проверяем их рекурсивно
     if element.children and #element.children > 0 then

@@ -72,16 +72,17 @@ function Draggable:findDropTarget(event)
     self.y = -10000
 
     local target = uiManager:findTargetElement(event)
+    
+    
 
     -- Возвращаем позицию
     self.x, self.y = originalX, originalY
 
-    if target == self then
-        return nil
-    end
+    
 
     -- Сохраняем целевой элемент
     self._currentDropTarget = target
+
 
     return target
 end
@@ -93,16 +94,16 @@ function Draggable:onTouchReleased(event)
     self.isDragging = false
 
     -- Восстанавливаем оригинальный zIndex или ставим над dropTarget
+    self:findDropTarget(event)
     if self.autoRaise then
       
-            
             if self._currentDropTarget then--and self._currentDropTarget.zIndex then
                 -- Установить z над целевым элементом
                 self:setZIndex(self._currentDropTarget.zIndex + 1)
             else
                 -- Или вернуть исходный
                 self:setZIndex(self.originalZIndex)
-                require("src.ui.utils.DebugConsole").log("original index: ", self.originalZIndex)
+                
             end
             self.originalZIndex = nil
             uiManager.needsSort = true
@@ -117,10 +118,11 @@ function Draggable:onTouchReleased(event)
               end
     local dropTarget = self._currentDropTarget
     self._currentDropTarget = nil
-
+    
+    
     if dropTarget then
-        require("src.ui.utils.DebugConsole").log("no?????? wtf?!??")
-        dropTarget:onDrop(self, event)
+        
+        dropTarget:onDrop( event)
     end
 
     return true
