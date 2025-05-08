@@ -11,7 +11,7 @@ local Label = require("src.ui.elements.Label")
 local ThemeManager = require("src.ui.core.ThemeManager")
 
 
-local ui = UIManager:new()
+local ui = require("src.ui.core.UIManager").getInstance()
 
 
 function love.load()
@@ -37,10 +37,26 @@ function love.load()
     
     local Element = require("src.ui.core.Element")
         -- Добавьте это в love.load() после создания scrollView
-    local testRect = Element:new(10, 10, 100, 50, {backgroundColor = {0,0.5,1,1}})
-    scrollView:addChild(testRect)
     
-    -- Добавляем тестовые элементы
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    -- Тестовый drop-таргет
+    local dropZone = Element:new(10, 100, 200, 200, { backgroundColor = {0.3, 0.3, 0.3, 1} })
+    
+    
+    ui:addElement(dropZone)
+    
+
+    
+    
     
     for i = 1, 50 do
 
@@ -68,7 +84,13 @@ function love.load()
     
 
     
-    
+    local draggableBtn = UIButton(love.graphics.getWidth() - 210, 80, 200, 50, "Перетащи меня", {
+        onClick = function() DebugConsole.log("Клик!") end,
+        ondrag = function(e) DebugConsole.log("Перетаскивание на "..e.x..", "..e.y) end,
+        ondragstart = function(e) DebugConsole.log("Начало перетаскивания") end,
+        ondragend = function(e) DebugConsole.log("Конец перетаскивания") end
+    })
+    ui:addElement(draggableBtn)
     
     
 
@@ -81,10 +103,11 @@ function love.load()
     })
 
     -- Тестовая кнопка
-    local testBtn = UIButton(love.graphics.getWidth() - 210, 50, 200, 40, "ТЕСТ", {
+    local testBtn = UIButton(love.graphics.getWidth() - 210, 50, 200, 40, "scrollView", {
         
         onClick = function()
-            DebugConsole.log("Нажата тестовая кнопка")
+            scrollView.visible = not scrollView.visible
+            scrollView.enebled = not scrollView.enebled
         end,
         zIndex = 1
     })
@@ -135,6 +158,10 @@ local ZIndex = require("src.ui.core.mixins.ZIndex")
 local Interactivity = require("src.ui.core.mixins.Interactivity")
 local ContentLayout = require("src.ui.core.mixins.ContentLayout")
 local Stylable = require("src.ui.core.mixins.Stylable")
+local Draggable = require("src.ui.core.mixins.Draggable")
+local DropTarget = require("src.ui.core.mixins.DropTarget")
+
+
 
 
 local Element = class("Element")
@@ -148,6 +175,8 @@ Element:mixin(Interactivity)
 Element:mixin(ContentLayout)
 Element:mixin(EventDispatcher)
 Element:mixin(Stylable) -- <<< Добавляем стилизуемость
+Element:mixin(Draggable)
+Element:mixin(DropTarget)
 
 function Element:initialize(x, y, w, h, options)
     -- Инициализируем EventDispatcher
@@ -161,7 +190,9 @@ function Element:initialize(x, y, w, h, options)
     Interactivity.initialize(self)
     ContentLayout.initialize(self)
     Stylable.initialize(self)
-
+    Draggable.initialize(self)
+    DropTarget.initialize(self)
+    
     -- Инициализация свойств
     self.x = x or 0
     self.y = y or 0
@@ -171,6 +202,7 @@ function Element:initialize(x, y, w, h, options)
     self.zIndex = options and options.zIndex or 0
     
     self:setStyle(options)
+  
 end
 
 -- Обработка события
@@ -201,6 +233,9 @@ end
 
 function Element:drawSelf()
     -- Рисуем фон
+    
+    love.graphics.setColor(self:getStyle("background_color"))
+    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
     
 end
 
@@ -400,14 +435,29 @@ local UIManager = {}
 UIManager.__index = UIManager
 
 
--- src/ui/core/UIManager.lua
 
+local UIManager = {}
+UIManager.__index = UIManager
+
+-- Приватная переменная для хранения единственного экземпляра
+local _instance = nil
+
+-- === getInstance ===
+function UIManager.getInstance()
+    if not _instance then
+        _instance = UIManager:new()
+    end
+    return _instance
+end
+
+-- === Конструктор ===
 function UIManager:new()
     local obj = {
         elements = {},
         focused = nil,
         interactionTarget = nil,     -- Элемент, с которым начато взаимодействие
         interactionStarted = false,  -- Флаг начала взаимодействия
+        lastTouch = { x = 0, y = 0 } -- Последнее событие касания
     }
     setmetatable(obj, self)
     return obj
@@ -511,7 +561,8 @@ function UIManager:handleEvent(event)
     local isPress = event.type == "mousepressed" or event.type == "touchpressed"
     local isRelease = event.type == "mousereleased" or event.type == "touchreleased"
     local isMove = event.type == "mousemoved"
-
+    
+    
     -- Если есть активное взаимодействие
     if self.interactionTarget then
         event.target = self.interactionTarget
@@ -623,6 +674,202 @@ return ContentLayout
 
 
 
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Draggable.lua ====
+
+local UIManager = require("src.ui.core.UIManager")
+local uiManager = UIManager.getInstance()
+
+local Draggable = {}
+
+
+
+local Draggable = {}
+
+function Draggable:initialize()
+    self.draggable = true
+    self.isDragging = false
+    self.dragOffsetX = 0
+    self.dragOffsetY = 0
+
+    -- Флаги
+    self.constrainDrag = true     -- Ограничивать ли перемещение
+    self.dragXOnly = false        -- Только по X?
+    self.dragYOnly = false        -- Только по Y?
+    self.autoRaise = true         -- Автоподнятие при драге?
+
+    -- Для временного хранения оригинального zIndex
+    self.originalZIndex = nil
+
+    self:addEventListener("touchpressed", function(e) return self:onTouchPressed(e) end)
+    self:addEventListener("touchmoved", function(e) return self:onTouchMoved(e) end)
+    self:addEventListener("touchreleased", function(e) return self:onTouchReleased(e) end)
+end
+
+-- === Начало перетаскивания ===
+function Draggable:onTouchPressed(event)
+    if not self.draggable or not self:isInside(event.x, event.y) then
+        return false
+    end
+
+    self.isDragging = true
+
+    -- Сохраняем оригинальный zIndex и поднимаем элемент наверх
+    if self.autoRaise then
+        self.originalZIndex = self.zIndex
+        self:setZIndex(9999) -- или любое значение выше других
+        uiManager.needsSort = true
+    end
+
+    self.dragOffsetX = event.x - self.x
+    self.dragOffsetY = event.y - self.y
+    self:startDrag(event)
+
+    return true
+end
+
+-- === Завершение перетаскивания ===
+function Draggable:onTouchReleased(event)
+    if not self.isDragging then return false end
+
+    self.isDragging = false
+
+    -- Восстанавливаем оригинальный zIndex
+    if self.autoRaise and self.originalZIndex ~= nil then
+        --self:setZIndex(self.originalZIndex)
+        --self.originalZIndex = nil
+        uiManager.needsSort = true
+    end
+
+    self:endDrag(event)
+
+    local dropTarget = self:findDropTarget(event)
+    if dropTarget then
+        dropTarget:onDrop(self, event)
+    end
+
+    return true
+end
+
+-- === findDropTarget ===
+function Draggable:findDropTarget(event)
+    local uiManager = UIManager.getInstance()
+    local originalX, originalY = self.x, self.y
+
+    -- Смещаем элемент немного в сторону, чтобы проверка не проходила через него
+    self.x = -10000
+    self.y = -10000
+
+    local target = uiManager:findTargetElement(event)
+
+    -- Возвращаем позицию
+    self.x, self.y = originalX, originalY
+
+    if target == self then
+        return nil
+    end
+    
+    uiManager.needsSort = true
+
+    return target
+end
+
+-- === Перемещение при драге ===
+function Draggable:onTouchMoved(event)
+    if not self.isDragging then return false end
+    
+    local newX = self.x
+    local newY = self.y
+
+    if not self.dragXOnly then
+        newX = event.x - self.dragOffsetX
+    end
+
+    if not self.dragYOnly then
+        newY = event.y - self.dragOffsetY
+    end
+
+    -- Ограничение по родителю или экрану
+    if self.constrainDrag then
+        if self.parent then
+            newX, newY = self:constrainPositionWithinParent(newX, newY)
+        else
+            newX, newY = self:constrainPositionWithinScreen(newX, newY)
+        end
+    end
+
+    self:setPosition(newX, newY)
+    self:dispatchEvent({ type = "drag", x = newX, y = newY })
+
+    return true
+end
+
+-- === Ограничение внутри родителя ===
+function Draggable:constrainPositionWithinParent(x, y)
+    local parent = self.parent
+    local maxX = parent.width - self.width
+    local maxY = parent.height - self.height
+    return math.max(0, math.min(maxX, x)), math.max(0, math.min(maxY, y))
+end
+
+-- === Ограничение по экрану ===
+function Draggable:constrainPositionWithinScreen(x, y)
+    local sw, sh = love.graphics.getDimensions()
+    local minX, minY = 0, 0
+    local maxX = sw - self.width
+    local maxY = sh - self.height
+    return math.max(minX, math.min(maxX, x)), math.max(minY, math.min(maxY, y))
+end
+
+-- === События начала и окончания drag ===
+function Draggable:startDrag(event)
+    self:dispatchEvent({ type = "dragstart", x = self.x, y = self.y })
+end
+
+function Draggable:endDrag(event)
+    self:dispatchEvent({ type = "dragend", x = self.x, y = self.y })
+end
+
+-- === Изменение позиции ===
+function Draggable:setPosition(x, y)
+    self.x = x
+    self.y = y
+end
+
+return Draggable
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Draggable.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/DropTarget.lua ====
+
+local DropTarget = {}
+
+function DropTarget:initialize()
+    self.dropEnabled = true
+end
+
+function DropTarget:enableDrop()
+    self.dropEnabled = true
+    return self
+end
+
+function DropTarget:disableDrop()
+    self.dropEnabled = false
+    return self
+end
+
+-- Вызывается при drop'е другого элемента на нас
+function DropTarget:onDrop(draggedElement, event)
+    if not self.dropEnabled then return end
+    require("src.ui.utils.DebugConsole").log("drop")
+    self:dispatchEvent({ type = "drop", element = draggedElement })
+end
+
+return DropTarget
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/DropTarget.lua ====
+
+
+
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Geometry.lua ====
 
 local Geometry = {}
@@ -670,7 +917,7 @@ function Hierarchy:addChild(child)
     if child.parent then
         child.parent:removeChild(child)
     end
-    child.parent = self
+    child.parent = nil
     child.x = self.padding or 0
     child.y = (self.contentHeight or 0) + (self.padding or 0)
     table.insert(self.children, child)
@@ -873,29 +1120,22 @@ function Button:initialize(x, y, w, h, text, options)
         if self:isInside(event.x, event.y) then
             self.pressed = true
         end
+        return true -- ВАЖНО!
     end)
     
-    -- Например, при выходе за границы экрана или при других событиях
     self:addEventListener("touchmoved", function(event)
         if self.pressed and not self:isInside(event.x, event.y) then
             self.pressed = false
         end
+        return false -- разрешаем другим обработчикам реагировать
     end)
-
--- 
-
+    
     self:addEventListener("touchreleased", function(event)
-      
-        -- в будущем поправить чтобы при выходе за элемент всё нориально работало
-        
         if self.pressed and self:isInside(event.x, event.y) then
-            
             if self.onClick then self.onClick(self, event) end
-      
-            
         end
-        
         self.pressed = false
+        return false
     end)
 end
 
@@ -941,6 +1181,8 @@ function Label:initialize(x, y, text, color, options)
     self.align = options.align or "left" -- left, center, right
     self.wrap = options.wrap or false -- Перенос текста
     self.limit = options.limit -- Максимальная ширина текста
+    
+    
     
     -- Вычисляем размеры при инициализации
     self:updateDimensions()
@@ -1032,8 +1274,25 @@ local ScrollView = class("ScrollView", Element)
 function ScrollView:initialize(x, y, w, h, options)
     options = options or {}
     Element.initialize(self, x, y, w, h, options)
+    
+    
+    
+      
+      
+    
+    
 
     self.content = Element:new(10, 10, w - 10, h + 10, {})
+    
+    
+    
+    self.content.onDrop = function(target, event)
+        DebugConsole.log("Элемент перетащен сюда: "..tostring(target))
+    end
+    
+    self.content:addEventListener("touchpressed", function(e) return e.target == dropZone end)
+
+
 
     self.scrollY = 0
     self.maxScrollY = 0

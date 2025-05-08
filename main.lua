@@ -7,7 +7,7 @@ local Label = require("src.ui.elements.Label")
 local ThemeManager = require("src.ui.core.ThemeManager")
 
 
-local ui = UIManager:new()
+local ui = require("src.ui.core.UIManager").getInstance()
 
 
 function love.load()
@@ -33,10 +33,26 @@ function love.load()
     
     local Element = require("src.ui.core.Element")
         -- Добавьте это в love.load() после создания scrollView
-    local testRect = Element:new(10, 10, 100, 50, {backgroundColor = {0,0.5,1,1}})
-    scrollView:addChild(testRect)
     
-    -- Добавляем тестовые элементы
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    -- Тестовый drop-таргет
+    local dropZone = Element:new(10, 100, 200, 200, { backgroundColor = {0.3, 0.3, 0.3, 1} })
+    
+    
+    ui:addElement(dropZone)
+    
+
+    
+    
     
     for i = 1, 50 do
 
@@ -66,9 +82,9 @@ function love.load()
     
     local draggableBtn = UIButton(love.graphics.getWidth() - 210, 80, 200, 50, "Перетащи меня", {
         onClick = function() DebugConsole.log("Клик!") end,
-        ondrag = function(e) DebugConsole.log("Перетаскивание на "..e.x..", "..e.y) end,
-        ondragstart = function(e) DebugConsole.log("Начало перетаскивания") end,
-        ondragend = function(e) DebugConsole.log("Конец перетаскивания") end
+        drag = function(e) DebugConsole.log("Перетаскивание на "..e.x..", "..e.y) end,
+        dragstart = function(e) DebugConsole.log("Начало перетаскивания") end,
+        dragend = function(e) DebugConsole.log("Конец перетаскивания") end
     })
     ui:addElement(draggableBtn)
     
@@ -83,10 +99,11 @@ function love.load()
     })
 
     -- Тестовая кнопка
-    local testBtn = UIButton(love.graphics.getWidth() - 210, 50, 200, 40, "ТЕСТ", {
+    local testBtn = UIButton(love.graphics.getWidth() - 210, 50, 200, 40, "scrollView", {
         
         onClick = function()
-            DebugConsole.log("Нажата тестовая кнопка")
+            scrollView.visible = not scrollView.visible
+            scrollView.enabled = not scrollView.enabled
         end,
         zIndex = 1
     })

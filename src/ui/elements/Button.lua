@@ -33,7 +33,7 @@ function Button:initialize(x, y, w, h, text, options)
             if self.onClick then self.onClick(self, event) end
         end
         self.pressed = false
-        return true
+        return false
     end)
 end
 

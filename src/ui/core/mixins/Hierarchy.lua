@@ -13,7 +13,7 @@ function Hierarchy:addChild(child)
     if child.parent then
         child.parent:removeChild(child)
     end
-    child.parent = self
+    child.parent = nil
     child.x = self.padding or 0
     child.y = (self.contentHeight or 0) + (self.padding or 0)
     table.insert(self.children, child)

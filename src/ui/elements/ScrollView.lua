@@ -8,8 +8,25 @@ local ScrollView = class("ScrollView", Element)
 function ScrollView:initialize(x, y, w, h, options)
     options = options or {}
     Element.initialize(self, x, y, w, h, options)
+    
+    
+    
+      
+      
+    
+    
 
     self.content = Element:new(10, 10, w - 10, h + 10, {})
+    
+    
+    
+    self.content.onDrop = function(target, event)
+        DebugConsole.log("Элемент перетащен сюда: "..tostring(target))
+    end
+    
+    self.content:addEventListener("touchpressed", function(e) return e.target == dropZone end)
+
+
 
     self.scrollY = 0
     self.maxScrollY = 0

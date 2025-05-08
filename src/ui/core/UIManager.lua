@@ -2,23 +2,52 @@ local UIManager = {}
 UIManager.__index = UIManager
 
 
--- src/ui/core/UIManager.lua
+
+local UIManager = {}
+UIManager.__index = UIManager
+
+-- Приватная переменная для хранения единственного экземпляра
+local _instance = nil
+
+-- === getInstance ===
+function UIManager.getInstance()
+    if not _instance then
+        _instance = UIManager:new()
+    end
+    return _instance
+end
+
+-- === Конструктор ===
+-- В UIManager.lua
 
 function UIManager:new()
     local obj = {
         elements = {},
+        nextZIndex = 1,
         focused = nil,
         interactionTarget = nil,     -- Элемент, с которым начато взаимодействие
         interactionStarted = false,  -- Флаг начала взаимодействия
+        lastTouch = { x = 0, y = 0 } -- Последнее событие касания
     }
     setmetatable(obj, self)
     return obj
 end
 
 
+
 function UIManager:addElement(element)
+    if element.zIndex == nil or element.zIndex == 0 then
+        element:setZIndex(self.nextZIndex)
+        self.nextZIndex = self.nextZIndex + 1
+    else
+        -- Обновляем счётчик, если zIndex больше текущего
+        if element.zIndex >= self.nextZIndex then
+            self.nextZIndex = element.zIndex + 1
+        end
+    end
+
     table.insert(self.elements, element)
-    self:sortElements() -- Сортируем сразу
+    self:sortElements()
 end
 
 function UIManager:removeElement(element)
@@ -113,7 +142,8 @@ function UIManager:handleEvent(event)
     local isPress = event.type == "mousepressed" or event.type == "touchpressed"
     local isRelease = event.type == "mousereleased" or event.type == "touchreleased"
     local isMove = event.type == "mousemoved"
-
+    
+    
     -- Если есть активное взаимодействие
     if self.interactionTarget then
         event.target = self.interactionTarget

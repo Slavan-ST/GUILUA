@@ -29,7 +29,8 @@ end
 function EventDispatcher:dispatchEvent(event)
     assert(type(event) == "table", "Event must be a table")
     assert(event.type, "Event must have a type")
-
+    
+    
     event.target = event.target or self
     event._stopped = false
     event._immediateStopped = false
@@ -78,6 +79,7 @@ function EventDispatcher:dispatchEvent(event)
         if listeners then
             local copy = { unpack(listeners) }
             for _, callback in ipairs(copy) do
+                require("src.ui.utils.DebugConsole").log("eventtype callback: ", event.type)
                 if event._immediateStopped then break end
                 callback(event)
             end

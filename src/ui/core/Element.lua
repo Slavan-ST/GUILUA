@@ -10,6 +10,7 @@ local Interactivity = require("src.ui.core.mixins.Interactivity")
 local ContentLayout = require("src.ui.core.mixins.ContentLayout")
 local Stylable = require("src.ui.core.mixins.Stylable")
 local Draggable = require("src.ui.core.mixins.Draggable")
+local DropTarget = require("src.ui.core.mixins.DropTarget")
 
 
 
@@ -26,6 +27,7 @@ Element:mixin(ContentLayout)
 Element:mixin(EventDispatcher)
 Element:mixin(Stylable) -- <<< Добавляем стилизуемость
 Element:mixin(Draggable)
+Element:mixin(DropTarget)
 
 function Element:initialize(x, y, w, h, options)
     -- Инициализируем EventDispatcher
@@ -40,6 +42,7 @@ function Element:initialize(x, y, w, h, options)
     ContentLayout.initialize(self)
     Stylable.initialize(self)
     Draggable.initialize(self)
+    DropTarget.initialize(self)
     
     -- Инициализация свойств
     self.x = x or 0
@@ -50,6 +53,7 @@ function Element:initialize(x, y, w, h, options)
     self.zIndex = options and options.zIndex or 0
     
     self:setStyle(options)
+  
 end
 
 -- Обработка события
@@ -80,6 +84,9 @@ end
 
 function Element:drawSelf()
     -- Рисуем фон
+    
+    love.graphics.setColor(self:getStyle("background_color"))
+    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
     
 end
 
