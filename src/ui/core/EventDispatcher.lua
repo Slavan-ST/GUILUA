@@ -1,119 +1,157 @@
 local EventDispatcher = {}
 
-function EventDispatcher:initialize()
-    self._listeners = {}  -- Слушатели для текущего элемента
+-- Вспомогательная функция для переворота массива
+local function reverse(tbl)
+    local reversed = {}
+    for i = #tbl, 1, -1 do
+        table.insert(reversed, tbl[i])
+    end
+    return reversed
 end
 
--- Добавление слушателя
-function EventDispatcher:addEventListener(eventType, callback)
+function EventDispatcher:initialize()
+    self._listeners = {}  -- Хранение слушателей по типам событий
+end
+
+-- Добавление слушателя с уникальным ключом
+function EventDispatcher:addEventListener(eventType, callback, useCapture)
     assert(type(callback) == "function", "Callback must be a function")
     if not self._listeners[eventType] then
-        self._listeners[eventType] = {}
+        self._listeners[eventType] = {
+            capture = { list = {}, map = {} },
+            bubble = { list = {}, map = {} }
+        }
     end
-    table.insert(self._listeners[eventType], callback)
+    local phase = useCapture and "capture" or "bubble"
+    local key = tostring(callback)
+    
+    -- Проверка на дубликаты через хэш-таблицу
+    if not self._listeners[eventType][phase].map[key] then
+        table.insert(self._listeners[eventType][phase].list, callback)
+        self._listeners[eventType][phase].map[key] = true
+    end
 end
 
--- Удаление слушателя
-function EventDispatcher:removeEventListener(eventType, callback)
+-- Удаление слушателя через хэш-таблицу
+function EventDispatcher:removeEventListener(eventType, callback, useCapture)
+    local phase = useCapture and "capture" or "bubble"
     local listeners = self._listeners[eventType]
     if not listeners then return end
-    for i = #listeners, 1, -1 do
-        if listeners[i] == callback then
-            table.remove(listeners, i)
-            break
+    
+    local phase_data = listeners[phase]
+    local key = tostring(callback)
+    
+    if phase_data.map[key] then
+        -- Поиск и удаление из списка
+        for i = 1, #phase_data.list do
+            if phase_data.list[i] == callback then
+                table.remove(phase_data.list, i)
+                phase_data.map[key] = nil
+                break
+            end
         end
     end
 end
 
--- Диспетчеризация события
+-- Диспетчеризация события с корректными фазами
 function EventDispatcher:dispatchEvent(event)
     assert(type(event) == "table", "Event must be a table")
     assert(event.type, "Event must have a type")
     
-    
-    event.target = event.target or self
+    -- Инициализация событийных свойств
+    event.target = self
+    event.currentTarget = nil
+    event.eventPhase = nil
     event._stopped = false
     event._immediateStopped = false
-    event.stopPropagation = function() 
-        event._stopped = true 
-    end
+    
+    -- Остановочные методы
+    event.stopPropagation = function() event._stopped = true end
     event.stopImmediatePropagation = function()
         event._immediateStopped = true
-        event._stopped = true
+        event.stopPropagation()
     end
-
-    -- Сбор цепочки от текущего объекта до корня
+    
+    -- Сбор цепочки объектов с защитой от циклов
     local chain = {}
     local current = self
-    while current do
-        table.insert(chain, 1, current)  -- Вставляем в начало — чтобы сверху вниз
+    local max_depth = 1000
+    local visited = {}
+    
+    while current and #chain < max_depth do
+        if visited[current] then break end
+        visited[current] = true
+        table.insert(chain, current)
         current = current.parent
     end
-
-    -- Phase 1: Capture (from root to target)
-    for i = 1, #chain - 1 do
+    
+    -- Переворачиваем для фазы capture (корень → цель)
+    chain = reverse(chain)
+    
+    -- Фаза capture (от корня к цели)
+    for i = 1, #chain do
         current = chain[i]
         event.currentTarget = current
         event.eventPhase = "capture"
-
+        
         if current:canHandleEvent(event) then
-            local listeners = current._listeners["oncapture_" .. event.type]
+            local listeners = current._listeners[event.type]
             if listeners then
-                local copy = { unpack(listeners) }
-                for _, callback in ipairs(copy) do
+                for _, callback in ipairs(listeners.capture.list) do
                     if event._immediateStopped then break end
                     callback(event)
                 end
             end
         end
-
+        
         if event._stopped then break end
     end
 
-    -- Phase 2: Target (the actual object where the event was triggered)
+    -- Фаза target (сам объект)
     event.currentTarget = self
     event.eventPhase = "target"
-
+    
     if self:canHandleEvent(event) then
         local listeners = self._listeners[event.type]
         if listeners then
-            local copy = { unpack(listeners) }
-            for _, callback in ipairs(copy) do
+            for _, callback in ipairs(listeners.bubble.list) do
                 if event._immediateStopped then break end
                 callback(event)
             end
         end
     end
 
-    -- Phase 3: Bubbling (from target to root)
-    if event.bubbles ~= false then
-        for i = #chain - 1, 1, -1 do
+    -- Фаза bubbling (от цели к корню)
+    if event.bubbles == nil then event.bubbles = true end
+    -- Фаза bubbling (от цели к корню)
+    if event.bubbles then
+        -- Итерация от родителя цели к корню (исключаем сам target)
+        for i = #chain-1, 1, -1 do  -- Исправление: начинаем с #chain-1 (родитель)
             current = chain[i]
             event.currentTarget = current
             event.eventPhase = "bubbling"
-
+            
             if current:canHandleEvent(event) then
                 local listeners = current._listeners[event.type]
                 if listeners then
-                    local copy = { unpack(listeners) }
-                    for _, callback in ipairs(copy) do
+                    for _, callback in ipairs(listeners.bubble.list) do
                         if event._immediateStopped then break end
                         callback(event)
                     end
                 end
             end
-
+            
             if event._stopped then break end
         end
     end
-
+    
     return not event._immediateStopped
 end
 
-
--- Проверка, можно ли обработать событие
+-- Проверка условий обработки события
 function EventDispatcher:canHandleEvent(event)
-    return self.visible and self.enabled  -- проверка видимости и активности
+    -- Если свойства не указаны, считаем их true
+    return (self.visible ~= false) and (self.enabled ~= false)
 end
 
 return EventDispatcher
