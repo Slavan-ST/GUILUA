@@ -26,9 +26,18 @@ function Draggable:initialize()
     self:addEventListener("touchmoved", function(e) return self:onTouchMoved(e) end)
     self:addEventListener("touchreleased", function(e) return self:onTouchReleased(e) end)
     
-    self:addEventListener("drag", function(event)
-        ...
-    end)
+    if self.options.drag then
+      self:addEventListener("drag", function(e) return self.options.drag(e) end)
+    end
+    
+    if self.options.dragstart then
+      self:addEventListener("dragstart", function(e) return self.options.dragstart(e) end)
+    end
+    
+    if self.options.dragend then
+      self:addEventListener("dragend", function(e) return self.options.dragend(e) end)
+    end
+    
 end
 
 -- === Начало перетаскивания ===

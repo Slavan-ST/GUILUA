@@ -30,6 +30,9 @@ Element:mixin(Draggable)
 Element:mixin(DropTarget)
 
 function Element:initialize(x, y, w, h, options)
+  
+   self.options = options
+  
     -- Инициализируем EventDispatcher
     EventDispatcher.initialize(self)
 
@@ -53,6 +56,8 @@ function Element:initialize(x, y, w, h, options)
     self.zIndex = options and options.zIndex or 0
     
     self:setStyle(options)
+    
+    
   
 end
 

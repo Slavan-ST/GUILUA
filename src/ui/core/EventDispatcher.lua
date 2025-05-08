@@ -79,7 +79,6 @@ function EventDispatcher:dispatchEvent(event)
         if listeners then
             local copy = { unpack(listeners) }
             for _, callback in ipairs(copy) do
-                require("src.ui.utils.DebugConsole").log("eventtype callback: ", event.type)
                 if event._immediateStopped then break end
                 callback(event)
             end
