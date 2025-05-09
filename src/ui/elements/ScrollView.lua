@@ -11,6 +11,8 @@ function ScrollView:initialize(options)
     
     self.content = Element:new({x =10, y = 10, self.width - 10, self.height + 10})
     
+    Element.addChild(self, content)
+    
     
     
     self.content.onDrop = function(target, event)
@@ -49,9 +51,6 @@ function ScrollView:initialize(options)
     self:addEventListener("touchreleased", function(e) return self:onTouchReleased(e) end)
     self:addEventListener("touchmoved", function(e) return self:onTouchMoved(e) end)
     
-    --Element.addChild(self, self.content)
-    
-  
 end
 
 function ScrollView:setContentSize(w, h)
@@ -59,8 +58,6 @@ function ScrollView:setContentSize(w, h)
     self.content.height = h
     self:updateScrollLimits()
 end
-
-
 
 function ScrollView:updateScrollLimits()
     local padding = self.content.padding or 0
@@ -89,8 +86,6 @@ function ScrollView:update(dt)
     end
 end
 
-
-
 function ScrollView:onTouchPressed(event)
     if not self:isInside(event.x, event.y) then return false end
     -- Корректируем координаты события относительно контента
@@ -106,7 +101,6 @@ function ScrollView:onTouchPressed(event)
     return true
 end
 
-
 function ScrollView:onTouchReleased(event)
     if event.id == self.touchId then
         self.touchId = nil
@@ -114,8 +108,6 @@ function ScrollView:onTouchReleased(event)
     end
     return false
 end
-
-
 
 function ScrollView:onTouchMoved(event)
     if event.id == self.touchId then
@@ -149,7 +141,7 @@ function ScrollView:drawSelf()
 
     love.graphics.push()
     love.graphics.translate(self.x, self.y - self.scrollY)
-    self.content:draw()
+    --self.content:draw()
     love.graphics.pop()
 
     love.graphics.setScissor()

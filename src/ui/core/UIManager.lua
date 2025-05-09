@@ -73,7 +73,15 @@ function UIManager:draw()
     end
 
     for _, el in ipairs(self.elements) do
-        if el.draw then el:draw() end
+          if el.draw then 
+            el:draw() 
+            if el.children and #el.children > 0 then
+                  for _, child in ipairs(el.children) do
+                      child:draw()
+                  end
+            end
+          
+          end
     end
 end
 
@@ -153,7 +161,7 @@ function UIManager:handleEvent(event)
         -- Для release и move продолжаем отправлять событие interactionTarget
         if isRelease or isMove then
             if self.interactionTarget.visible and self.interactionTarget.enabled then
-                local result = self.interactionTarget:handleEvent(event)
+                local result = self.interactionTarget:dispatchEvent(event)
 
                 if isRelease then
                     self.interactionTarget.pressed = false
@@ -184,7 +192,7 @@ function UIManager:handleEvent(event)
             target.pressed = true
         end
 
-        return target:handleEvent(event)
+        return target:dispatchEvent(event)
     end
 
     return false

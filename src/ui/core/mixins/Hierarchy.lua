@@ -15,6 +15,7 @@ function Hierarchy:addChild(child)
     child.parent = nil
     
     table.insert(self.children, child)
+    self:sortChildren()
 end
 
 function Hierarchy:removeChild(child)
@@ -43,6 +44,7 @@ function Hierarchy:getRoot()
 end
 
 function Hierarchy:toGlobal(x, y)
+    if not self.parent then return self.x, self.y end
     local node = self
     while node.parent do
         x = x + node.parent.x
