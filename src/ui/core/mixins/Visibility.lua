@@ -1,7 +1,7 @@
 local Visibility = {}
 
-function Visibility:initialize()
-    self.visible = true
+function Visibility:initialize(options)
+    self.visible = options and options.visible or true
 end
 
 function Visibility:show()

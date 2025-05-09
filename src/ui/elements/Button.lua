@@ -11,10 +11,10 @@ local Element = require("src.ui.core.Element")
 local Button = class("Button", Element)
 
 
-function Button:initialize(x, y, w, h, text, options)
+function Button:initialize(options)
     
-    Element.initialize(self, x, y, w, h, options or {})
-    self.text = text or "Button"
+    Element.initialize(self, options or {})
+    self.text = options and options.text or "Button"
     self.pressed = false
     self.onClick = options and options.onClick
     self:setStyle(

@@ -1,24 +1,20 @@
 local Hierarchy = {}
 
-function Hierarchy:initialize()
-    self.parent = nil
-    self.children = {}
+function Hierarchy:initialize(options)
+    self.parent = options and options.parent or nil
+    self.children = options and options.contentWidth or {}
 end
 
 function Hierarchy:addChild(child)
     if not child then
-        require("src.ui.utils.DebugConsole").log("Child cannot be nil")
         return 
     end
     if child.parent then
         child.parent:removeChild(child)
     end
     child.parent = nil
-    child.x = self.padding or 0
-    child.y = (self.contentHeight or 0) + (self.padding or 0)
+    
     table.insert(self.children, child)
-    if self.updateContentSize then self:updateContentSize() end
-    if self.sortChildren then self:sortChildren() end
 end
 
 function Hierarchy:removeChild(child)
@@ -44,6 +40,16 @@ function Hierarchy:getRoot()
         node = node.parent
     end
     return node
+end
+
+function Hierarchy:toGlobal(x, y)
+    local node = self
+    while node.parent do
+        x = x + node.parent.x
+        y = y + node.parent.y
+        node = node.parent
+    end
+    return x, y
 end
 
 return Hierarchy

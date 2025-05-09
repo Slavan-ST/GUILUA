@@ -1,9 +1,12 @@
+
+
+-- ВНИМАНИЕ!! ПРИМЕНЯТЬ ТОЛЬКО К ЭЛЕМЕНТАМ С МИКЧИНОМ ГЕОМЕТРИИ
 local ContentLayout = {}
 
-function ContentLayout:initialize()
-    self.contentWidth = 0
-    self.contentHeight = 0
-    self.padding = 0
+function ContentLayout:initialize(options)
+    self.contentWidth = options and options.contentWidth or 0
+    self.contentHeight = options and options.contentHeight or 0
+    self.padding = options and options.padding or 0
 end
 
 function ContentLayout:updateContentSize()

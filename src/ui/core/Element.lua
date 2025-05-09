@@ -30,37 +30,25 @@ Element:mixin(Draggable)
 Element:mixin(DropTarget)
 Element:mixin(Animation)
 
-function Element:initialize(x, y, w, h, options)
+function Element:initialize(options)
   
    self.options = options or {}
   
     -- Инициализируем EventDispatcher
-    EventDispatcher.initialize(self)
+    EventDispatcher.initialize(self, self.options)
 
     -- Инициализируем миксины
-    Hierarchy.initialize(self)
-    Visibility.initialize(self)
-    Geometry.initialize(self)
-    ZIndex.initialize(self)
-    Interactivity.initialize(self)
-    ContentLayout.initialize(self)
-    Stylable.initialize(self)
-    Draggable.initialize(self)
-    DropTarget.initialize(self)
-    Animation.initialize(self)
+    Hierarchy.initialize(self, self.options)
+    Visibility.initialize(self, self.options)
+    Geometry.initialize(self, self.options)
+    ZIndex.initialize(self, self.options)
+    Interactivity.initialize(self, self.options)
+    ContentLayout.initialize(self, self.options)
+    Stylable.initialize(self, self.options)
+    Draggable.initialize(self, self.options)
+    DropTarget.initialize(self, self.options)
+    Animation.initialize(self, self.options)
     
-    -- Инициализация свойств
-    self.x = x or 0
-    self.y = y or 0
-    self.width = w or 0
-    self.height = h or 0
-    self.pressed = false
-    self.zIndex = options and options.zIndex or 0
-    
-    self:setStyle(options)
-    
-    
-  
 end
 
 -- Обработка события

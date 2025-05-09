@@ -18,54 +18,25 @@ function love.load()
     ThemeManager.setTheme("dark")
 
     -- Создание ScrollView
-    local scrollView = ScrollView:new(
-        100,
-        100,
-        love.graphics.getWidth() - 200,
-        love.graphics.getHeight() - 200,
-        {
+    local scrollView = ScrollView:new({
+        x = 100,
+        y = 100,
+        width = love.graphics.getWidth() - 200,
+        height =love.graphics.getHeight() - 200,
+        
             zIndex = 1,
             scrollBarSize = 10,
             scrollBarColor = {0.1, 0.5, 0.2, 0.1}
-        }
-    )
-
-    -- Кнопка с анимацией
-    local button = UIButton(100, 100, 200, 50, "Анимация", {})
-    button.onClick = function()
-        DebugConsole.log("Кнопка нажата!")
-
-        -- Анимация масштаба
-        button:animate("scale", {
-            from = 1,
-            to = 0.7,
-            duration = 0.2
-        }, function()
-            -- Обратная анимация масштаба
-            button:animate("scale", {
-                from = 0.7,
-                to = 1,
-                duration = 0.2
-            })
-        end)
-
-        -- Анимация цвета
-        button:animate("color", {
-            from = {1, 0, 0, 1}, -- Красный
-            to = {0, 1, 0, 1},    -- Зеленый
-            duration = 0.5
         })
-    end
-
-    ui:addElement(button)
-
+      
     -- Добавление элементов в ScrollView
     for i = 1, 50 do
         local label = Label:new(
-            10, 15,
-            "Элемент " .. i,
-            {1, 1, 1, 1},
-            {
+          {
+            x = 10, y = 15,
+            text = "Элемент " .. i,
+            color = {1, 1, 1, 1},
+            
                 zIndex = 1000,
                 align = "left",
                 wrap = true
@@ -76,61 +47,33 @@ function love.load()
 
     ui:addElement(scrollView)
 
-    -- Элемент для тестирования drag'n'drop
-    local dropZone = Element:new(10, 100, 200, 200, {
-        backgroundColor = {0.3, 0.3, 0.3, 1},
-        drop = function(event)
-            DebugConsole.log("drop в позиции:", event.x, event.y)
-        end
-    })
-
-    ui:addElement(dropZone)
-
-    local draggableBtn = UIButton(
-        love.graphics.getWidth() - 210,
-        80,
-        200,
-        50,
-        "Перетащи меня",
-        {
-            onClick = function() DebugConsole.log("Клик!") end,
-            dragstart = function(event) end,
-            drag = function(event) end,
-            dtagend = function(event) end
-        }
-    )
-
-    ui:addElement(draggableBtn)
-
     -- Кнопка открытия консоли
-    local consoleBtn = UIButton(
-        love.graphics.getWidth() - 210,
-        10,
-        200,
-        40,
-        "КОНСОЛЬ",
-        {
+    local consoleBtn = UIButton({
+        x = love.graphics.getWidth() - 210,
+        y = 10,
+        width = 200,
+        height = 40,
+        text = "КОНСОЛЬ",
+        
             onClick = function()
                 DebugConsole.toggle()
             end
-        }
-    )
+        })
 
     -- Тестовая кнопка (показ/скрытие scrollView)
-    local testBtn = UIButton(
-        love.graphics.getWidth() - 210,
-        50,
-        200,
-        40,
-        "scrollView",
-        {
+    local testBtn = UIButton({
+        x = love.graphics.getWidth() - 210,
+        y = 50,
+        width = 200,
+        height = 40,
+        text = "scrollView",
+        
             onClick = function()
                 scrollView.visible = not scrollView.visible
                 scrollView.enabled = not scrollView.enabled
             end,
             zIndex = 1
-        }
-    )
+        })
 
     ui:addElement(consoleBtn)
     ui:addElement(testBtn)

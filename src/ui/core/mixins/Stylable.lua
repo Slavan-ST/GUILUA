@@ -3,7 +3,7 @@ local ThemeManager = require("src.ui.core.ThemeManager")
 
 local Stylable = {}
 
-function Stylable:initialize()
+function Stylable:initialize(options)
     -- Стилевые свойства, которые могут быть переопределены через options или взяты из темы
     self.style = {
         background_color = nil,

@@ -5,18 +5,11 @@ local ScrollView = class("ScrollView", Element)
 
 
 
-function ScrollView:initialize(x, y, w, h, options)
+function ScrollView:initialize(options)
     options = options or {}
-    Element.initialize(self, x, y, w, h, options)
+    Element.initialize(self, options)
     
-    
-    
-      
-      
-    
-    
-
-    self.content = Element:new(10, 10, w - 10, h + 10, {})
+    self.content = Element:new({x =10, y = 10, self.width - 10, self.height + 10})
     
     
     
@@ -177,7 +170,26 @@ function ScrollView:drawSelf()
 end
 
 function ScrollView:addChild(child)
+    -- Получаем список дочерних элементов
+    local children = self.content.children
+
+    
+    local offsetY = 0
+    if #children > 0 then
+        -- Берём последний добавленный элемент
+        local lastChild = children[#children]
+        -- Вычисляем Y как нижнюю границу последнего элемента + отступ
+        offsetY = lastChild.y + lastChild.height
+    end
+
+    
+    x,y = child:toGlobal(child.x, child.y)
+    child.x = x
+    child.y = y + offsetY
+    -- Добавляем ребёнка
     self.content:addChild(child)
+
+    -- Обновляем размер контента и ограничения скролла
     self.content:updateContentSize()
     self:updateScrollLimits()
 end

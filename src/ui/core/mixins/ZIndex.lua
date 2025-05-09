@@ -1,14 +1,11 @@
 local ZIndex = {}
 
-function ZIndex:initialize()
-    self.zIndex = 0
+function ZIndex:initialize(options)
+    self.zIndex = options and options.zIndex or 0
 end
 
 function ZIndex:setZIndex(value)
     self.zIndex = value or 0
-    if self.parent then
-        self.parent:sortChildren()
-    end
     return self
 end
 

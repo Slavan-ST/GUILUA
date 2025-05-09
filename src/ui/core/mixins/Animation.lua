@@ -1,7 +1,7 @@
 -- src/ui/core/mixins/Animation.lua
 local Animation = {}
 
-function Animation:initialize()
+function Animation:initialize(options)
     -- Инициализация анимаций
     self.animations = {}
     self.animationIdCounter = 0

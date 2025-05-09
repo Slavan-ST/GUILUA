@@ -3,13 +3,13 @@ local class = require("lib.middleclass")
 
 local Label = class("Label", Element)
 
-function Label:initialize(x, y, text, color, options)
+function Label:initialize(options)
     options = options or {}
-    Element.initialize(self, x, y, 0, 0, options) -- Ширина и высота будут вычислены при установке текста
+    Element.initialize(self, options) -- Ширина и высота будут вычислены при установке текста
     
-    self.text = text or ""
+    self.text = options and options.text or ""
     self.font = love.graphics.getFont()
-    self.color = color or {1, 1, 1, 1} -- Белый цвет по умолчанию
+    self.color = options and options.color or {1, 1, 1, 1} -- Белый цвет по умолчанию
     self.align = options.align or "left" -- left, center, right
     self.wrap = options.wrap or false -- Перенос текста
     self.limit = options.limit -- Максимальная ширина текста

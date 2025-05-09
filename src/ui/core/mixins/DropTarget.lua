@@ -1,3 +1,5 @@
+-- ВНИМАНИЕ!! ПРИМЕНЯТЬ ТОЛЬКО К ЭЛЕМЕНТАМ С МИКЧИНОМ ГЕОМЕТРИИ
+
 local DropTarget = {}
 
 function DropTarget:initialize()
