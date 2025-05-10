@@ -22,54 +22,25 @@ function love.load()
     ThemeManager.setTheme("dark")
 
     -- Создание ScrollView
-    local scrollView = ScrollView:new(
-        100,
-        100,
-        love.graphics.getWidth() - 200,
-        love.graphics.getHeight() - 200,
-        {
+    local scrollView = ScrollView:new({
+        x = 100,
+        y = 100,
+        width = love.graphics.getWidth() - 200,
+        height =love.graphics.getHeight() - 200,
+        
             zIndex = 1,
             scrollBarSize = 10,
             scrollBarColor = {0.1, 0.5, 0.2, 0.1}
-        }
-    )
-
-    -- Кнопка с анимацией
-    local button = UIButton(100, 100, 200, 50, "Анимация", {})
-    button.onClick = function()
-        DebugConsole.log("Кнопка нажата!")
-
-        -- Анимация масштаба
-        button:animate("scale", {
-            from = 1,
-            to = 0.7,
-            duration = 0.2
-        }, function()
-            -- Обратная анимация масштаба
-            button:animate("scale", {
-                from = 0.7,
-                to = 1,
-                duration = 0.2
-            })
-        end)
-
-        -- Анимация цвета
-        button:animate("color", {
-            from = {1, 0, 0, 1}, -- Красный
-            to = {0, 1, 0, 1},    -- Зеленый
-            duration = 0.5
         })
-    end
-
-    ui:addElement(button)
-
+      
     -- Добавление элементов в ScrollView
     for i = 1, 50 do
         local label = Label:new(
-            10, 15,
-            "Элемент " .. i,
-            {1, 1, 1, 1},
-            {
+          {
+            x = 10, y = 15,
+            text = "Элемент " .. i,
+            color = {1, 1, 1, 1},
+            
                 zIndex = 1000,
                 align = "left",
                 wrap = true
@@ -80,61 +51,33 @@ function love.load()
 
     ui:addElement(scrollView)
 
-    -- Элемент для тестирования drag'n'drop
-    local dropZone = Element:new(10, 100, 200, 200, {
-        backgroundColor = {0.3, 0.3, 0.3, 1},
-        drop = function(event)
-            DebugConsole.log("drop в позиции:", event.x, event.y)
-        end
-    })
-
-    ui:addElement(dropZone)
-
-    local draggableBtn = UIButton(
-        love.graphics.getWidth() - 210,
-        80,
-        200,
-        50,
-        "Перетащи меня",
-        {
-            onClick = function() DebugConsole.log("Клик!") end,
-            dragstart = function(event) end,
-            drag = function(event) end,
-            dtagend = function(event) end
-        }
-    )
-
-    ui:addElement(draggableBtn)
-
     -- Кнопка открытия консоли
-    local consoleBtn = UIButton(
-        love.graphics.getWidth() - 210,
-        10,
-        200,
-        40,
-        "КОНСОЛЬ",
-        {
+    local consoleBtn = UIButton({
+        x = love.graphics.getWidth() - 210,
+        y = 10,
+        width = 200,
+        height = 40,
+        text = "КОНСОЛЬ",
+        
             onClick = function()
                 DebugConsole.toggle()
             end
-        }
-    )
+        })
 
     -- Тестовая кнопка (показ/скрытие scrollView)
-    local testBtn = UIButton(
-        love.graphics.getWidth() - 210,
-        50,
-        200,
-        40,
-        "scrollView",
-        {
+    local testBtn = UIButton({
+        x = love.graphics.getWidth() - 210,
+        y = 50,
+        width = 200,
+        height = 40,
+        text = "scrollView",
+        
             onClick = function()
                 scrollView.visible = not scrollView.visible
                 scrollView.enabled = not scrollView.enabled
             end,
             zIndex = 1
-        }
-    )
+        })
 
     ui:addElement(consoleBtn)
     ui:addElement(testBtn)
@@ -198,9 +141,9 @@ end
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/Element.lua ====
 
 local class = require("lib.middleclass")
-local EventDispatcher = require("src.ui.core.EventDispatcher")
 
--- Подключаем миксины
+
+local EventDispatcher = require("src.ui.core.mixins.EventDispatcher")
 local Hierarchy = require("src.ui.core.mixins.Hierarchy")
 local Visibility = require("src.ui.core.mixins.Visibility")
 local Geometry = require("src.ui.core.mixins.Geometry")
@@ -211,7 +154,9 @@ local Stylable = require("src.ui.core.mixins.Stylable")
 local Draggable = require("src.ui.core.mixins.Draggable")
 local DropTarget = require("src.ui.core.mixins.DropTarget")
 local Animation = require("src.ui.core.mixins.Animation")
-
+local Scissorable = require("src.ui.core.mixins.Scissorable")
+local Spacing = require("src.ui.core.mixins.Spacing")
+local Offsetable = require("src.ui.core.mixins.Offsetable")
 
 
 local Element = class("Element")
@@ -224,249 +169,114 @@ Element:mixin(ZIndex)
 Element:mixin(Interactivity)
 Element:mixin(ContentLayout)
 Element:mixin(EventDispatcher)
-Element:mixin(Stylable) -- <<< Добавляем стилизуемость
+Element:mixin(Stylable)
 Element:mixin(Draggable)
 Element:mixin(DropTarget)
 Element:mixin(Animation)
+Element:mixin(Scissorable)
+Element:mixin(Spacing)
+Element:mixin(Offsetable)
 
-function Element:initialize(x, y, w, h, options)
+
+function Element:initialize(options)
   
    self.options = options or {}
   
     -- Инициализируем EventDispatcher
-    EventDispatcher.initialize(self)
+    EventDispatcher.initialize(self, self.options)
 
     -- Инициализируем миксины
-    Hierarchy.initialize(self)
-    Visibility.initialize(self)
-    Geometry.initialize(self)
-    ZIndex.initialize(self)
-    Interactivity.initialize(self)
-    ContentLayout.initialize(self)
-    Stylable.initialize(self)
-    Draggable.initialize(self)
-    DropTarget.initialize(self)
-    Animation.initialize(self)
+    Hierarchy.initialize(self, self.options)
+    Visibility.initialize(self, self.options)
+    Geometry.initialize(self, self.options)
+    ZIndex.initialize(self, self.options)
+    Interactivity.initialize(self, self.options)
+    ContentLayout.initialize(self, self.options)
+    Stylable.initialize(self, self.options)
+    Draggable.initialize(self, self.options)
+    DropTarget.initialize(self, self.options)
+    Animation.initialize(self, self.options)
+    Scissorable.initialize(self, options)
+    Spacing.initialize(self, options)
+    Offsetable.initialize(self, options)
     
-    -- Инициализация свойств
-    self.x = x or 0
-    self.y = y or 0
-    self.width = w or 0
-    self.height = h or 0
-    self.pressed = false
-    self.zIndex = options and options.zIndex or 0
-    
-    self:setStyle(options)
-    
-    
-  
-end
-
--- Обработка события
--- src/ui/core/Element.lua
-
-function Element:handleEvent(event)
-    return self:dispatchEvent(event)
 end
 
 function Element:draw()
     if not self.visible then return end
-
-    self:sortChildren()
-
-    love.graphics.push()
-    --love.graphics.translate(self.x, self.y)
-
     self:drawSelf()
-
-    if self.children and #self.children > 0 then
-        for _, child in ipairs(self.children) do
-            child:draw()
-        end
-    end
-
-    love.graphics.pop()
 end
 
 function Element:update(dt)
-    self:updateAnimations(dt) -- <<< Добавьте это
-    -- ... остальной код ...
+    self:updateAnimations(dt)
 end
 
 function Element:drawSelf()
-    -- Рисуем фон
-    
-    love.graphics.setColor(self:getStyle("background_color"))
-    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
-    
-end
+    if not self.visible then return end
 
+    love.graphics.push() -- <-- Сначала push()
+
+    -- 1. Устанавливаем scissor (обрезку), если включена
+    self:applyScissor()
+
+    -- 2. Рисуем фон элемента
+    love.graphics.setColor(self:getStyle("background_color"))
+    love.graphics.rectangle(
+        "fill",
+        self.x + self:getMarginLeft(),
+        self.y + self:getMarginTop(),
+        self.width - self:getMarginX(),
+        self.height - self:getMarginY()
+    )
+
+    -- 3. Рисуем рамку, если задана
+    local borderColor = self:getStyle("border_color")
+    local borderWidth = self:getStyle("border_width") or 0
+
+    if borderColor and borderWidth > 0 then
+        love.graphics.setColor(borderColor)
+        love.graphics.setLineWidth(borderWidth)
+        love.graphics.rectangle(
+            "line",
+            self.x + self:getMarginLeft() + borderWidth / 2,
+            self.y + self:getMarginTop() + borderWidth / 2,
+            self.width - self:getMarginX() - borderWidth,
+            self.height - self:getMarginY() - borderWidth
+        )
+    end
+
+    -- 4. Переводим координаты на offset (например, для скролла)
+    love.graphics.translate(
+        self:getOffsetX(),
+        self:getOffsetY()
+    )
+
+    -- 5. Рисуем содержимое внутри padding'ов
+    love.graphics.translate(
+        self.x + self:getMarginLeft() + self:getPaddingLeft(),
+        self.y + self:getMarginTop() + self:getPaddingTop()
+    )
+
+    -- Вызываем drawContent(), если определён (может быть у контейнеров/прокрутки)
+    if self.drawContent then
+        self:drawContent()
+    end
+
+    love.graphics.pop() -- <-- pop() закрывает весь блок
+    self:clearScissor() -- <-- восстанавливаем старый scissor вне push/pop
+end
+function Element:drawContent()
+  if self.children and #self.children > 0 then
+                  for _, child in ipairs(self.children) do
+                      
+                      child:draw()
+                      
+                  end
+            end
+end
 
 return Element
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/Element.lua ====
-
-
-
--- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/EventDispatcher.lua ====
-
-local EventDispatcher = {}
-
--- Вспомогательная функция для переворота массива
-local function reverse(tbl)
-    local reversed = {}
-    for i = #tbl, 1, -1 do
-        table.insert(reversed, tbl[i])
-    end
-    return reversed
-end
-
-function EventDispatcher:initialize()
-    self._listeners = {}  -- Хранение слушателей по типам событий
-end
-
--- Добавление слушателя с уникальным ключом
-function EventDispatcher:addEventListener(eventType, callback, useCapture)
-    assert(type(callback) == "function", "Callback must be a function")
-    if not self._listeners[eventType] then
-        self._listeners[eventType] = {
-            capture = { list = {}, map = {} },
-            bubble = { list = {}, map = {} }
-        }
-    end
-    local phase = useCapture and "capture" or "bubble"
-    local key = tostring(callback)
-    
-    -- Проверка на дубликаты через хэш-таблицу
-    if not self._listeners[eventType][phase].map[key] then
-        table.insert(self._listeners[eventType][phase].list, callback)
-        self._listeners[eventType][phase].map[key] = true
-    end
-end
-
--- Удаление слушателя через хэш-таблицу
-function EventDispatcher:removeEventListener(eventType, callback, useCapture)
-    local phase = useCapture and "capture" or "bubble"
-    local listeners = self._listeners[eventType]
-    if not listeners then return end
-    
-    local phase_data = listeners[phase]
-    local key = tostring(callback)
-    
-    if phase_data.map[key] then
-        -- Поиск и удаление из списка
-        for i = 1, #phase_data.list do
-            if phase_data.list[i] == callback then
-                table.remove(phase_data.list, i)
-                phase_data.map[key] = nil
-                break
-            end
-        end
-    end
-end
-
--- Диспетчеризация события с корректными фазами
-function EventDispatcher:dispatchEvent(event)
-    assert(type(event) == "table", "Event must be a table")
-    assert(event.type, "Event must have a type")
-    
-    -- Инициализация событийных свойств
-    event.target = self
-    event.currentTarget = nil
-    event.eventPhase = nil
-    event._stopped = false
-    event._immediateStopped = false
-    
-    -- Остановочные методы
-    event.stopPropagation = function() event._stopped = true end
-    event.stopImmediatePropagation = function()
-        event._immediateStopped = true
-        event.stopPropagation()
-    end
-    
-    -- Сбор цепочки объектов с защитой от циклов
-    local chain = {}
-    local current = self
-    local max_depth = 1000
-    local visited = {}
-    
-    while current and #chain < max_depth do
-        if visited[current] then break end
-        visited[current] = true
-        table.insert(chain, current)
-        current = current.parent
-    end
-    
-    -- Переворачиваем для фазы capture (корень → цель)
-    chain = reverse(chain)
-    
-    -- Фаза capture (от корня к цели)
-    for i = 1, #chain do
-        current = chain[i]
-        event.currentTarget = current
-        event.eventPhase = "capture"
-        
-        if current:canHandleEvent(event) then
-            local listeners = current._listeners[event.type]
-            if listeners then
-                for _, callback in ipairs(listeners.capture.list) do
-                    if event._immediateStopped then break end
-                    callback(event)
-                end
-            end
-        end
-        
-        if event._stopped then break end
-    end
-
-    -- Фаза target (сам объект)
-    event.currentTarget = self
-    event.eventPhase = "target"
-    
-    if self:canHandleEvent(event) then
-        local listeners = self._listeners[event.type]
-        if listeners then
-            for _, callback in ipairs(listeners.bubble.list) do
-                if event._immediateStopped then break end
-                callback(event)
-            end
-        end
-    end
-
-    -- Фаза bubbling (от цели к корню)
-    if event.bubbles == nil then event.bubbles = true end
-    -- Фаза bubbling (от цели к корню)
-    if event.bubbles then
-        -- Итерация от родителя цели к корню (исключаем сам target)
-        for i = #chain-1, 1, -1 do  -- Исправление: начинаем с #chain-1 (родитель)
-            current = chain[i]
-            event.currentTarget = current
-            event.eventPhase = "bubbling"
-            
-            if current:canHandleEvent(event) then
-                local listeners = current._listeners[event.type]
-                if listeners then
-                    for _, callback in ipairs(listeners.bubble.list) do
-                        if event._immediateStopped then break end
-                        callback(event)
-                    end
-                end
-            end
-            
-            if event._stopped then break end
-        end
-    end
-    
-    return not event._immediateStopped
-end
-
--- Проверка условий обработки события
-function EventDispatcher:canHandleEvent(event)
-    -- Если свойства не указаны, считаем их true
-    return (self.visible ~= false) and (self.enabled ~= false)
-end
-
-return EventDispatcher
--- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/EventDispatcher.lua ====
 
 
 
@@ -524,6 +334,8 @@ function ThemeManager.setTheme(name)
         error("Unknown theme: " .. tostring(name))
     end
 end
+
+
 
 return ThemeManager
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/ThemeManager.lua ====
@@ -607,7 +419,11 @@ function UIManager:draw()
     end
 
     for _, el in ipairs(self.elements) do
-        if el.draw then el:draw() end
+          if el.draw then 
+            el:draw() 
+            
+          
+          end
     end
 end
 
@@ -687,7 +503,7 @@ function UIManager:handleEvent(event)
         -- Для release и move продолжаем отправлять событие interactionTarget
         if isRelease or isMove then
             if self.interactionTarget.visible and self.interactionTarget.enabled then
-                local result = self.interactionTarget:handleEvent(event)
+                local result = self.interactionTarget:dispatchEvent(event)
 
                 if isRelease then
                     self.interactionTarget.pressed = false
@@ -718,7 +534,7 @@ function UIManager:handleEvent(event)
             target.pressed = true
         end
 
-        return target:handleEvent(event)
+        return target:dispatchEvent(event)
     end
 
     return false
@@ -771,7 +587,7 @@ return UIManager
 -- src/ui/core/mixins/Animation.lua
 local Animation = {}
 
-function Animation:initialize()
+function Animation:initialize(options)
     -- Инициализация анимаций
     self.animations = {}
     self.animationIdCounter = 0
@@ -884,12 +700,15 @@ return Animation
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/ContentLayout.lua ====
 
+
+
+-- ВНИМАНИЕ!! ПРИМЕНЯТЬ ТОЛЬКО К ЭЛЕМЕНТАМ С МИКЧИНОМ ГЕОМЕТРИИ
 local ContentLayout = {}
 
-function ContentLayout:initialize()
-    self.contentWidth = 0
-    self.contentHeight = 0
-    self.padding = 0
+function ContentLayout:initialize(options)
+    self.contentWidth = options and options.contentWidth or 0
+    self.contentHeight = options and options.contentHeight or 0
+    self.padding = options and options.padding or 0
 end
 
 function ContentLayout:updateContentSize()
@@ -1108,7 +927,54 @@ return Draggable
 
 
 
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Drawable.lua ====
+
+local Drawable = {}
+
+function Drawable:drawSelf()
+    -- Обрезка по границам элемента
+    love.graphics.setScissor(self.x, self.y, self.width, self.height)
+
+    -- Фон
+    if self:getStyle("background_color") then
+        love.graphics.setColor(self:getStyle("background_color"))
+        love.graphics.rectangle("fill", self.x, self.y, self.width, self.height,
+            self:getStyle("corner_radius") or 0)
+    end
+
+    -- Рамка
+    if self:getStyle("border_color") and (self.style.border_width or 0) > 0 then
+        love.graphics.setColor(self:getStyle("border_color"))
+        love.graphics.setLineWidth(self.style.border_width or 1)
+        love.graphics.rectangle("line", self.x, self.y, self.width, self.height,
+            self:getStyle("corner_radius") or 0)
+    end
+
+    -- Сброс обрезки
+    love.graphics.setScissor()
+
+    -- Тело контента (если есть)
+    love.graphics.push()
+    love.graphics.translate(self.x + self:getPaddingLeft(), self.y + self:getPaddingTop())
+
+    self:drawContent()
+
+    love.graphics.pop()
+end
+
+-- Можно переопределять в потомках
+function Drawable:drawContent()
+    -- По умолчанию ничего не рисует
+end
+
+return Drawable
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Drawable.lua ====
+
+
+
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/DropTarget.lua ====
+
+-- ВНИМАНИЕ!! ПРИМЕНЯТЬ ТОЛЬКО К ЭЛЕМЕНТАМ С МИКЧИНОМ ГЕОМЕТРИИ
 
 local DropTarget = {}
 
@@ -1142,30 +1008,184 @@ return DropTarget
 
 
 
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/EventDispatcher.lua ====
+
+local EventDispatcher = {}
+
+-- Вспомогательная функция для переворота массива
+local function reverse(tbl)
+    local reversed = {}
+    for i = #tbl, 1, -1 do
+        table.insert(reversed, tbl[i])
+    end
+    return reversed
+end
+
+function EventDispatcher:initialize()
+    self._listeners = {}  -- Хранение слушателей по типам событий
+end
+
+-- Добавление слушателя с уникальным ключом
+function EventDispatcher:addEventListener(eventType, callback, useCapture)
+    assert(type(callback) == "function", "Callback must be a function")
+    if not self._listeners[eventType] then
+        self._listeners[eventType] = {
+            capture = { list = {}, map = {} },
+            bubble = { list = {}, map = {} }
+        }
+    end
+    local phase = useCapture and "capture" or "bubble"
+    local key = tostring(callback)
+    
+    -- Проверка на дубликаты через хэш-таблицу
+    if not self._listeners[eventType][phase].map[key] then
+        table.insert(self._listeners[eventType][phase].list, callback)
+        self._listeners[eventType][phase].map[key] = true
+    end
+end
+
+-- Удаление слушателя через хэш-таблицу
+function EventDispatcher:removeEventListener(eventType, callback, useCapture)
+    local phase = useCapture and "capture" or "bubble"
+    local listeners = self._listeners[eventType]
+    if not listeners then return end
+    
+    local phase_data = listeners[phase]
+    local key = tostring(callback)
+    
+    if phase_data.map[key] then
+        -- Поиск и удаление из списка
+        for i = 1, #phase_data.list do
+            if phase_data.list[i] == callback then
+                table.remove(phase_data.list, i)
+                phase_data.map[key] = nil
+                break
+            end
+        end
+    end
+end
+
+-- Диспетчеризация события с корректными фазами
+function EventDispatcher:dispatchEvent(event)
+    assert(type(event) == "table", "Event must be a table")
+    assert(event.type, "Event must have a type")
+    
+    -- Инициализация событийных свойств
+    event.target = self
+    event.currentTarget = nil
+    event.eventPhase = nil
+    event._stopped = false
+    event._immediateStopped = false
+    
+    -- Остановочные методы
+    event.stopPropagation = function() event._stopped = true end
+    event.stopImmediatePropagation = function()
+        event._immediateStopped = true
+        event.stopPropagation()
+    end
+    
+    -- Сбор цепочки объектов с защитой от циклов
+    local chain = {}
+    local current = self
+    local max_depth = 1000
+    local visited = {}
+    
+    while current and #chain < max_depth do
+        if visited[current] then break end
+        visited[current] = true
+        table.insert(chain, current)
+        current = current.parent
+    end
+    
+    -- Переворачиваем для фазы capture (корень → цель)
+    chain = reverse(chain)
+    
+    -- Фаза capture (от корня к цели)
+    for i = 1, #chain do
+        current = chain[i]
+        event.currentTarget = current
+        event.eventPhase = "capture"
+        
+        if current:canHandleEvent(event) then
+            local listeners = current._listeners[event.type]
+            if listeners then
+                for _, callback in ipairs(listeners.capture.list) do
+                    if event._immediateStopped then break end
+                    callback(event)
+                end
+            end
+        end
+        
+        if event._stopped then break end
+    end
+
+    -- Фаза target (сам объект)
+    event.currentTarget = self
+    event.eventPhase = "target"
+    
+    if self:canHandleEvent(event) then
+        local listeners = self._listeners[event.type]
+        if listeners then
+            for _, callback in ipairs(listeners.bubble.list) do
+                if event._immediateStopped then break end
+                callback(event)
+            end
+        end
+    end
+
+    -- Фаза bubbling (от цели к корню)
+    if event.bubbles == nil then event.bubbles = true end
+    -- Фаза bubbling (от цели к корню)
+    if event.bubbles then
+        -- Итерация от родителя цели к корню (исключаем сам target)
+        for i = #chain-1, 1, -1 do  -- Исправление: начинаем с #chain-1 (родитель)
+            current = chain[i]
+            event.currentTarget = current
+            event.eventPhase = "bubbling"
+            
+            if current:canHandleEvent(event) then
+                local listeners = current._listeners[event.type]
+                if listeners then
+                    for _, callback in ipairs(listeners.bubble.list) do
+                        if event._immediateStopped then break end
+                        callback(event)
+                    end
+                end
+            end
+            
+            if event._stopped then break end
+        end
+    end
+    
+    return not event._immediateStopped
+end
+
+-- Проверка условий обработки события
+function EventDispatcher:canHandleEvent(event)
+    -- Если свойства не указаны, считаем их true
+    return (self.visible ~= false) and (self.enabled ~= false)
+end
+
+return EventDispatcher
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/EventDispatcher.lua ====
+
+
+
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Geometry.lua ====
 
 local Geometry = {}
 
-function Geometry:initialize()
-    self.x = 0
-    self.y = 0
-    self.width = 0
-    self.height = 0
+function Geometry:initialize(options)
+    self.x = options and options.x or 0
+    self.y = options and options.y or 0
+    self.width = options and options.width or 0
+    self.height = options and options.height or 0
 end
 
 function Geometry:isInside(x, y)
     return x >= self.x and y >= self.y and x <= self.x + self.width and y <= self.y + self.height
 end
 
-function Geometry:toGlobal(x, y)
-    local node = self
-    while node.parent do
-        x = x + node.parent.x
-        y = y + node.parent.y
-        node = node.parent
-    end
-    return x, y
-end
 
 return Geometry
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Geometry.lua ====
@@ -1176,25 +1196,22 @@ return Geometry
 
 local Hierarchy = {}
 
-function Hierarchy:initialize()
-    self.parent = nil
-    self.children = {}
+function Hierarchy:initialize(options)
+    self.parent = options and options.parent or nil
+    self.children = options and options.contentWidth or {}
 end
 
 function Hierarchy:addChild(child)
     if not child then
-        require("src.ui.utils.DebugConsole").log("Child cannot be nil")
         return 
     end
     if child.parent then
         child.parent:removeChild(child)
     end
     child.parent = nil
-    child.x = self.padding or 0
-    child.y = (self.contentHeight or 0) + (self.padding or 0)
+    
     table.insert(self.children, child)
-    if self.updateContentSize then self:updateContentSize() end
-    if self.sortChildren then self:sortChildren() end
+    self:sortChildren()
 end
 
 function Hierarchy:removeChild(child)
@@ -1220,6 +1237,17 @@ function Hierarchy:getRoot()
         node = node.parent
     end
     return node
+end
+
+function Hierarchy:toGlobal(x, y)
+    if not self.parent then return self.x, self.y end
+    local node = self
+    while node.parent do
+        x = x + node.parent.x
+        y = y + node.parent.y
+        node = node.parent
+    end
+    return x, y
 end
 
 return Hierarchy
@@ -1251,6 +1279,137 @@ return Interactivity
 
 
 
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Offsetable.lua ====
+
+-- src/ui/core/mixins/Offsetable.lua
+local Offsetable = {}
+
+function Offsetable:initialize(options)
+    self.offsetX = options and options.offsetX or 0
+    self.offsetY = options and options.offsetY or 0
+end
+
+function Offsetable:setOffset(x, y)
+    self.offsetX = x or self.offsetX
+    self.offsetY = y or self.offsetY
+end
+
+function Offsetable:getOffsetX() return self.offsetX end
+function Offsetable:getOffsetY() return self.offsetY end
+
+return Offsetable
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Offsetable.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Scissorable.lua ====
+
+-- src/ui/core/mixins/Scissorable.lua
+local Scissorable = {}
+
+function Scissorable:initialize(options)
+    self.scissorEnabled = options and options.scissor or false
+    self._previousScissor = nil -- Для хранения старого scissor
+end
+
+function Scissorable:enableScissor(enable)
+    self.scissorEnabled = enable ~= false
+end
+
+function Scissorable:applyScissor()
+    if self.scissorEnabled then
+        -- Сохраняем текущую область обрезки
+        local x, y, w, h = love.graphics.getScissor()
+        self._previousScissor = x and {x, y, w, h} or nil
+        
+        -- Устанавливаем новый scissor
+        love.graphics.setScissor(
+            self.x + self:getMarginLeft(),
+            self.y + self:getMarginTop(),
+            self.width - self:getMarginX(),
+            self.height - self:getMarginY()
+        )
+    end
+end
+
+function Scissorable:clearScissor()
+    if self.scissorEnabled then
+    -- Восстанавливаем предыдущую область обрезки
+    if self._previousScissor and #self._previousScissor == 4 then
+        love.graphics.setScissor(
+            self._previousScissor[1],
+            self._previousScissor[2],
+            self._previousScissor[3],
+            self._previousScissor[4]
+        )
+    else
+        love.graphics.setScissor() -- Отключаем scissor
+    end
+    self._previousScissor = nil
+end
+end
+return Scissorable
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Scissorable.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Spacing.lua ====
+
+-- src/ui/core/mixins/Spacing.lua
+local Spacing = {}
+
+function Spacing:initialize(options)
+    self.paddingLeft   = options and options.paddingLeft or 0
+    self.paddingRight  = options and options.paddingRight or 0
+    self.paddingTop    = options and options.paddingTop or 0
+    self.paddingBottom = options and options.paddingBottom or 0
+
+    self.marginLeft   = options and options.marginLeft or 0
+    self.marginRight  = options and options.marginRight or 0
+    self.marginTop    = options and options.marginTop or 0
+    self.marginBottom = options and options.marginBottom or 0
+end
+
+function Spacing:getPaddingX() return self.paddingLeft + self.paddingRight end
+function Spacing:getPaddingY() return self.paddingTop + self.paddingBottom end
+function Spacing:getMarginX() return self.marginLeft + self.marginRight end
+function Spacing:getMarginY() return self.marginTop + self.marginBottom end
+
+function Spacing:setPadding(left, right, top, bottom)
+    self.paddingLeft = left or self.paddingLeft
+    self.paddingRight = right or self.paddingRight
+    self.paddingTop = top or self.paddingTop
+    self.paddingBottom = bottom or self.paddingBottom
+end
+
+function Spacing:setMargin(left, right, top, bottom)
+    self.marginLeft = left or self.marginLeft
+    self.marginRight = right or self.marginRight
+    self.marginTop = top or self.marginTop
+    self.marginBottom = bottom or self.marginBottom
+end
+
+-- src/ui/core/mixins/Spacing.lua
+
+function Spacing:getMarginLeft()   return self.marginLeft or 0 end
+function Spacing:getMarginRight()  return self.marginRight or 0 end
+function Spacing:getMarginTop()    return self.marginTop or 0 end
+function Spacing:getMarginBottom() return self.marginBottom or 0 end
+function Spacing:getMarginX() return self:getMarginLeft() + self:getMarginRight() end
+function Spacing:getMarginY() return self:getMarginTop() + self:getMarginBottom() end
+
+function Spacing:getPaddingLeft()   return self.paddingLeft or 0 end
+function Spacing:getPaddingRight()  return self.paddingRight or 0 end
+function Spacing:getPaddingTop()    return self.paddingTop or 0 end
+function Spacing:getPaddingBottom() return self.paddingBottom or 0 end
+function Spacing:getPaddingX() return self:getPaddingLeft() + self:getPaddingRight() end
+function Spacing:getPaddingY() return self:getPaddingTop() + self:getPaddingBottom() end
+
+return Spacing
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Spacing.lua ====
+
+
+
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Stylable.lua ====
 
 
@@ -1258,7 +1417,7 @@ local ThemeManager = require("src.ui.core.ThemeManager")
 
 local Stylable = {}
 
-function Stylable:initialize()
+function Stylable:initialize(options)
     -- Стилевые свойства, которые могут быть переопределены через options или взяты из темы
     self.style = {
         background_color = nil,
@@ -1291,7 +1450,8 @@ function Stylable:getStyle(key)
         return value
     end
 
-    return ThemeManager.get(key)
+    local theme = ThemeManager.currentTheme
+    return theme[self.type] and theme[self.type][key] or ThemeManager.themes.default[key]
 end
 
 -- Установка цвета фона
@@ -1328,8 +1488,8 @@ return Stylable
 
 local Visibility = {}
 
-function Visibility:initialize()
-    self.visible = true
+function Visibility:initialize(options)
+    self.visible = options and options.visible or true
 end
 
 function Visibility:show()
@@ -1351,15 +1511,12 @@ return Visibility
 
 local ZIndex = {}
 
-function ZIndex:initialize()
-    self.zIndex = 0
+function ZIndex:initialize(options)
+    self.zIndex = options and options.zIndex or 0
 end
 
 function ZIndex:setZIndex(value)
     self.zIndex = value or 0
-    if self.parent then
-        self.parent:sortChildren()
-    end
     return self
 end
 
@@ -1372,45 +1529,74 @@ return ZIndex
 
 local class = require("lib.middleclass")
 local Element = require("src.ui.core.Element")
-local Button = class("Button", Element)
-
-
-
-
-local class = require("lib.middleclass")
-local Element = require("src.ui.core.Element")
 
 local Button = class("Button", Element)
 
+function Button:initialize(options)
+    Element.initialize(self, options)
 
-function Button:initialize(x, y, w, h, text, options)
-    
-    Element.initialize(self, x, y, w, h, options or {})
-    self.text = text or "Button"
+    -- === Текст кнопки ===
+    self.text = options and options.text or "Button"
     self.pressed = false
     self.onClick = options and options.onClick
-    self:setStyle(
-      { background_color = options and options.backgroundColor or {0.5, 0.5, 0.5, 1} 
-      })
-    self.textColor = options and options.textColor or {1, 1, 1, 1}
-    
-    
-    
 
+    -- === Стили ===
+    self:setStyle({
+        background_color = options and options.backgroundColor or {0.5, 0.5, 0.5, 1},
+        border_color     = options and options.borderColor or nil,
+        border_width     = options and options.borderWidth or 0,
+        text_color       = options and options.textColor or {1, 1, 1, 1}
+    })
+
+    -- === Отступы ===
+    if options then
+        -- Padding
+        if options.padding then
+            self:setPadding(options.padding)
+        else
+            self:setPadding(
+                options.paddingLeft or self.paddingLeft,
+                options.paddingRight or self.paddingRight,
+                options.paddingTop or self.paddingTop,
+                options.paddingBottom or self.paddingBottom
+            )
+        end
+
+        -- Margin
+        if options.margin then
+            self:setMargin(options.margin)
+        else
+            self:setMargin(
+                options.marginLeft or self.marginLeft,
+                options.marginRight or self.marginRight,
+                options.marginTop or self.marginTop,
+                options.marginBottom or self.marginBottom
+            )
+        end
+
+        -- Scissor
+        if options.scissor ~= nil then
+            self:enableScissor(options.scissor)
+        else
+            self:enableScissor(false)
+        end
+    end
+
+    -- === События нажатия ===
     self:addEventListener("touchpressed", function(event)
         if self:isInside(event.x, event.y) then
             self.pressed = true
         end
-        return true -- ВАЖНО!
+        return true -- Захватываем событие
     end)
-    
+
     self:addEventListener("touchmoved", function(event)
         if self.pressed and not self:isInside(event.x, event.y) then
             self.pressed = false
         end
-        return false -- разрешаем другим обработчикам реагировать
+        return false
     end)
-    
+
     self:addEventListener("touchreleased", function(event)
         if self.pressed and self:isInside(event.x, event.y) then
             if self.onClick then self.onClick(self, event) end
@@ -1420,30 +1606,16 @@ function Button:initialize(x, y, w, h, text, options)
     end)
 end
 
-
-
-function Button:draw()
-    if not self.visible then return end
-    
-
-    -- Вместо этого используйте стили:
-    
-    -- В Button:draw()
-    local bgColor =  self:getStyle("background_color")
-    love.graphics.setColor(bgColor)
-    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
-
-    love.graphics.setColor(1, 1, 1)
-    love.graphics.printf(self.text, self.x, self.y + self.height / 2 - 6, self.width, "center")
-
-    -- Debug frame
-    love.graphics.setColor(1, 1, 1, 0.5)
-    love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
-
-    -- Отрисовка дочерних (если есть)
-    for _, child in ipairs(self.children) do
-        child:draw()
-    end
+-- === Рисование контента кнопки ===
+function Button:drawContent()
+    love.graphics.setColor(self:getStyle("text_color"))
+    love.graphics.printf(
+        self.text,
+        0, -- Уже учитываем padding в translate
+        self.height / 2 - 6,
+        self.width,
+        "center"
+    )
 end
 
 return Button
@@ -1453,95 +1625,97 @@ return Button
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/Label.lua ====
 
-local Element = require("src.ui.core.Element")
 local class = require("lib.middleclass")
+local Element = require("src.ui.core.Element")
 
 local Label = class("Label", Element)
 
-function Label:initialize(x, y, text, color, options)
+function Label:initialize(options)
     options = options or {}
-    Element.initialize(self, x, y, 0, 0, options) -- Ширина и высота будут вычислены при установке текста
-    
-    self.text = text or ""
-    self.font = love.graphics.getFont()
-    self.color = color or {1, 1, 1, 1} -- Белый цвет по умолчанию
+    Element.initialize(self, options)
+
+    -- === Текст ===
+    self.text = options.text or ""
+    self.font = options.font or love.graphics.getFont()
     self.align = options.align or "left" -- left, center, right
-    self.wrap = options.wrap or false -- Перенос текста
-    self.limit = options.limit -- Максимальная ширина текста
-    
-    
-    
-    -- Вычисляем размеры при инициализации
-    self:updateDimensions()
+    self.wrap = options.wrap or false     -- Перенос текста
+    self.limit = options.limit            -- Ширина для переноса
+
+    -- === Цвет текста через стиль ===
+    self:setStyle({
+        text_color = options.color or {1, 1, 1, 1} -- Белый по умолчанию
+    })
+
+    -- === Автоматическое обновление размеров ===
+    self:autoSize()
 end
 
--- Обновляет размеры label в соответствии с текстом
-function Label:updateDimensions()
+-- === Автоматически вычисляет ширину и высоту под текст ===
+function Label:autoSize()
     if not self.font then return end
-    
+
     if self.wrap and self.limit then
-        self.width = self.limit
+        self.contentWidth = self.limit
         local _, wrapped = self.font:getWrap(self.text, self.limit)
-        self.height = #wrapped * self.font:getHeight()
+        self.contentHeight = #wrapped * self.font:getHeight()
     else
-        self.width = self.font:getWidth(self.text)
-        self.height = self.font:getHeight()
+        self.contentWidth = self.font:getWidth(self.text)
+        self.contentHeight = self.font:getHeight()
+    end
+
+    -- Если не заданы width/height явно — используем contentWidth/contentHeight
+    if not self._widthSetExplicitly then
+        self.width = self.contentWidth + self:getPaddingX()
+    end
+    if not self._heightSetExplicitly then
+        self.height = self.contentHeight + self:getPaddingY()
     end
 end
 
--- Устанавливает текст и обновляет размеры
+-- === Обновляем размеры при изменении текста ===
 function Label:setText(text)
     self.text = text or ""
-    self:updateDimensions()
+    self:autoSize()
     return self
 end
 
--- Устанавливает шрифт и обновляет размеры
+-- === Устанавливаем шрифт ===
 function Label:setFont(font)
     self.font = font or love.graphics.getFont()
-    self:updateDimensions()
+    self:autoSize()
     return self
 end
 
--- Устанавливает цвет текста
-function Label:setColor(color)
-    self.color = color or {1, 1, 1, 1}
-    return self
-end
-
--- Устанавливает выравнивание текста
+-- === Устанавливаем выравнивание ===
 function Label:setAlign(align)
     self.align = align or "left"
     return self
 end
 
--- Отрисовка label
-function Label:drawSelf()
-    
-    if not self.visible or not self.font or #self.text == 0 then return end
-    
-    
-    
-    local oldColor = {love.graphics.getColor()}
+-- === Рисование контента (текста) внутри padding'ов ===
+function Label:drawContent(width, height)
+    if #self.text == 0 or not self.font then return end
+
+    local color = self:getStyle("text_color") or {1, 1, 1, 1}
     love.graphics.setFont(self.font)
-    love.graphics.setColor(self.color)
-    
+    love.graphics.setColor(color)
+
+    local x = 0
+    local y = 0
+
     if self.wrap and self.limit then
-        love.graphics.printf(self.text, self.x, self.y, self.limit, self.align)
+        love.graphics.printf(self.text, x, y, self.limit, self.align)
     else
-        local x = self.x
         if self.align == "center" then
-            x = x + (self.width / 2)
+            x = width / 2
         elseif self.align == "right" then
-            x = x + self.width
+            x = width
         end
-        
-        love.graphics.print(self.text, x, self.y, 0, 1, 1, 
-                           self.align == "center" and self.width/2 or 
-                           self.align == "right" and self.width or 0)
+
+        love.graphics.print(self.text, x, y, 0, 1, 1,
+            self.align == "center" and width / 2 or
+            self.align == "right" and width or 0)
     end
-    
-    love.graphics.setColor(oldColor)
 end
 
 return Label
@@ -1556,116 +1730,131 @@ local Element = require("src.ui.core.Element")
 
 local ScrollView = class("ScrollView", Element)
 
-
-
-function ScrollView:initialize(x, y, w, h, options)
+function ScrollView:initialize(options)
     options = options or {}
-    Element.initialize(self, x, y, w, h, options)
-    
-    
-    
-      
-      
-    
+    Element.initialize(self, options)
+    self.scissorEnabled = true
+
+    -- === Содержимое прокрутки ===
+    self.content = Element:new({
+        x = 0,
+        y = 0,
+        width = self.width,
+        height = 0,
+        paddingLeft = options.contentPaddingLeft or options.paddingLeft or 0,
+        paddingRight = options.contentPaddingRight or options.paddingRight or 0,
+        paddingTop = options.contentPaddingTop or options.paddingTop or 0,
+        paddingBottom = options.contentPaddingBottom or options.paddingBottom or 0,
+        scissor = false,
+    })
+
     
 
-    self.content = Element:new(10, 10, w - 10, h + 10, {})
-    
-    
-    
-    self.content.onDrop = function(target, event)
-        DebugConsole.log("Элемент перетащен сюда: "..tostring(target))
-    end
-    
-    self.content:addEventListener("touchpressed", function(e) return e.target == dropZone end)
-
-
-
+    -- === Позиция прокрутки ===
     self.scrollY = 0
     self.maxScrollY = 0
     self.scrollX = 0
-    self.maxScrollX = 10
+    self.maxScrollX = 0
 
+    -- === Настройки скроллбара ===
     self.scrollBarVisible = false
-    self.scrollBarSize = options.scrollBarSize or self:getStyle("scrollbar_size")
-    self.scrollBarColor = options.scrollBarColor or self:getStyle("scrollbar_color")
-    self.scrollBarMargin = options.scrollBarMargin or self:getStyle("scrollbar_margin")
+    self.scrollBarSize = options.scrollBarSize or self:getStyle("scrollbar_size") or 10
+    self.scrollBarColor = options.scrollBarColor or self:getStyle("scrollbar_color") or {0.5, 0.5, 0.5, 0.8}
+    self.scrollBarMargin = options.scrollBarMargin or self:getStyle("scrollbar_margin") or 4
 
-    
-    self.friction = self:getStyle("friction")
-    self.maxVelocity = self:getStyle("max_velocity")
+    -- === Физика инерции ===
+    self.friction = options.friction or self:getStyle("friction") or 0.92
+    self.maxVelocity = options.maxVelocity or self:getStyle("max_velocity") or 2000
 
-    
-    -- Для тач-событий и инерции
+    -- === Переменные для тач-управления ===
     self.touchId = nil
     self.lastTouchY = 0
-    self.lastTouchX = 0
     self.velocityY = 0
-    
-    
-    
-    -- Обработчики событий
+
+    -- === События ===
     self:addEventListener("touchpressed", function(e) return self:onTouchPressed(e) end)
-    self:addEventListener("touchreleased", function(e) return self:onTouchReleased(e) end)
     self:addEventListener("touchmoved", function(e) return self:onTouchMoved(e) end)
+    self:addEventListener("touchreleased", function(e) return self:onTouchReleased(e) end)
+
+    -- === Для драг-н-дропа (если нужно) ===
+    self.content.onDrop = function(target, event)
+        print("Элемент перетащен сюда:", tostring(target))
+    end
     
-    --Element.addChild(self, self.content)
-    
-  
+    --self:addChild(self.content) -- Добавляем контент как дочерний элемент
 end
 
-function ScrollView:setContentSize(w, h)
-    self.content.width = w
-    self.content.height = h
+-- === Добавление дочерних элементов в content ===
+function ScrollView:addChild(child)
+    local offsetY = 0
+    if #self.content.children > 0 then
+        local lastChild = self.content.children[#self.content.children]
+        offsetY = lastChild.y + lastChild.height
+    end
+
+    child.x = self.content:getPaddingLeft() or 0
+    child.y = offsetY
+    self.content:addChild(child)
+
+    self.content:updateContentSize()
     self:updateScrollLimits()
 end
 
+-- === Удаление дочернего элемента ===
+function ScrollView:removeChild(child)
+    self.content:removeChild(child)
+    self.content:updateContentSize()
+    self:updateScrollLimits()
+end
 
-
+-- === Обновление ограничений прокрутки ===
 function ScrollView:updateScrollLimits()
-    local padding = self.content.padding or 0
-    
-    self.maxScrollX = math.max(0, (self.content.contentWidth or 0) + 2 * padding - self.width)
-    self.maxScrollY = math.max(0, (self.content.contentHeight or 0) + 2 * padding - self.height)
+    local padding = self.content:getPaddingY()
+    self.maxScrollY = math.max(0, (self.content.contentHeight or 0) - (self.height - padding))
     self.scrollY = math.max(0, math.min(self.scrollY, self.maxScrollY))
     self.scrollBarVisible = self.maxScrollY > 0
 end
 
+-- === Логика обновления (для инерции) ===
 function ScrollView:update(dt)
+    Element.update(self, dt)
+
     if not self.touchId and math.abs(self.velocityY) > 1 then
-        local delta = self.velocityY * dt * 60
-        self.scrollY = self.scrollY + delta
+        local delta = self.velocityY * dt
+        self.scrollY = math.max(0, math.min(self.maxScrollY, self.scrollY + delta))
         self.velocityY = self.velocityY * self.friction
-        
+
+        -- Границы
         if self.scrollY < 0 then
-            self.scrollY = self.scrollY * 0.3
+            self.scrollY = 0
             self.velocityY = 0
         elseif self.scrollY > self.maxScrollY then
-            self.scrollY = self.maxScrollY + (self.scrollY - self.maxScrollY) * 0.3
+            self.scrollY = self.maxScrollY
             self.velocityY = 0
         end
-        
-        self:updateScrollLimits()
     end
 end
 
-
+-- === Обработка событий ===
 
 function ScrollView:onTouchPressed(event)
     if not self:isInside(event.x, event.y) then return false end
-    -- Корректируем координаты события относительно контента
-    local adjustedY = event.y + self.scrollY
-    for _, child in ipairs(self.content.children) do
-        if child:isInside(event.x, adjustedY) then
-            return child:handleEvent(event)
-        end
-    end
     self.touchId = event.id
     self.lastTouchY = event.y
     self.velocityY = 0
     return true
 end
 
+function ScrollView:onTouchMoved(event)
+    if event.id == self.touchId then
+        local deltaY = self.lastTouchY - event.y
+        self.lastTouchY = event.y
+        self.scrollY = math.max(0, math.min(self.maxScrollY, self.scrollY + deltaY))
+        self.velocityY = deltaY * 15
+        return true
+    end
+    return false
+end
 
 function ScrollView:onTouchReleased(event)
     if event.id == self.touchId then
@@ -1675,70 +1864,43 @@ function ScrollView:onTouchReleased(event)
     return false
 end
 
-
-
-function ScrollView:onTouchMoved(event)
-    if event.id == self.touchId then
-        -- В onTouchMoved:
-
-        local deltaX = (self.lastTouchX - event.x)
-        self.scrollX = math.max(0, math.min(self.maxScrollX, self.scrollX + deltaX))
-        
-        local deltaY = (self.lastTouchY - event.y)
-        self.scrollY = math.max(0, math.min(self.maxScrollY, self.scrollY + deltaY))
-        self.lastTouchY = event.y
-        
-        self.velocityY = math.max(-self.maxVelocity, math.min(self.maxVelocity, deltaY * 15))
-        self.scrollY = self.scrollY + deltaY
-        self:updateScrollLimits()
-        return true
-    end
-    return false
-end
-
-
-
-function ScrollView:drawSelf()
-    self.content.height = self.contentHeight
-
-    love.graphics.setScissor(self.x, self.y, self.width, self.height)
-
-    -- Фон
-    love.graphics.setColor(self:getStyle("background_color"))
-    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
-
+function ScrollView:drawContent(width, height)
     love.graphics.push()
-    love.graphics.translate(self.x, self.y - self.scrollY)
-    self.content:draw()
-    love.graphics.pop()
-
-    love.graphics.setScissor()
-
-    if self.scrollBarVisible and self.maxScrollY > 0 then
-        local scrollAreaHeight = self.height - self.scrollBarMargin * 2
-        local scrollBarHeight = math.max(30, scrollAreaHeight * (self.height / (self.content.contentHeight or self.height)))
-        local scrollBarPos = self.scrollBarMargin + (self.scrollY / self.maxScrollY) * (scrollAreaHeight - scrollBarHeight)
-
-        love.graphics.setColor(self.scrollBarColor)
-        love.graphics.rectangle("fill",
-            self.x + self.width - self.scrollBarSize - self.scrollBarMargin,
-            self.y + scrollBarPos,
-            self.scrollBarSize,
-            scrollBarHeight
-        )
+    love.graphics.translate(0, -self.scrollY)
+    
+    -- Применяем scissor один раз для всего контента
+    self:applyScissor()
+    
+    -- Рисуем содержимое
+    for _, child in ipairs(self.content.children) do
+        child:draw()
     end
+    
+    -- Очищаем scissor после отрисовки всего контента
+    self:clearScissor()
+    
+    love.graphics.pop()
 end
 
-function ScrollView:addChild(child)
-    self.content:addChild(child)
-    self.content:updateContentSize()
-    self:updateScrollLimits()
+-- === Отрисовка скроллбара ===
+function ScrollView:drawScrollBar()
+    if not self.scrollBarVisible or self.maxScrollY <= 0 then return end
+
+    local scrollAreaHeight = self.height - self.scrollBarMargin * 2
+    local scrollBarHeight = math.max(30, scrollAreaHeight * (self.height / (self.content.contentHeight + self.content:getPaddingY())))
+    local scrollBarPos = self.scrollBarMargin + (self.scrollY / self.maxScrollY) * (scrollAreaHeight - scrollBarHeight)
+
+    love.graphics.setColor(self.scrollBarColor)
+    love.graphics.rectangle("fill",
+        self.width - self.scrollBarSize - self.scrollBarMargin,
+        scrollBarPos,
+        self.scrollBarSize,
+        scrollBarHeight
+    )
 end
 
-function ScrollView:removeChild(child)
-    self.content:removeChild(child)
-    self:updateScrollLimits()
-end
+
+-- === drawSelf() наследуется из Element и вызывает drawContent() ===
 
 return ScrollView
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/ScrollView.lua ====
