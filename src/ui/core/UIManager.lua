@@ -75,11 +75,7 @@ function UIManager:draw()
     for _, el in ipairs(self.elements) do
           if el.draw then 
             el:draw() 
-            if el.children and #el.children > 0 then
-                  for _, child in ipairs(el.children) do
-                      child:draw()
-                  end
-            end
+            
           
           end
     end

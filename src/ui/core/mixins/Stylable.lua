@@ -36,7 +36,8 @@ function Stylable:getStyle(key)
         return value
     end
 
-    return ThemeManager.get(key)
+    local theme = ThemeManager.currentTheme
+    return theme[self.type] and theme[self.type][key] or ThemeManager.themes.default[key]
 end
 
 -- Установка цвета фона

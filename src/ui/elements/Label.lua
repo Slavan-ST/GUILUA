@@ -1,92 +1,94 @@
-local Element = require("src.ui.core.Element")
 local class = require("lib.middleclass")
+local Element = require("src.ui.core.Element")
 
 local Label = class("Label", Element)
 
 function Label:initialize(options)
     options = options or {}
-    Element.initialize(self, options) -- Ширина и высота будут вычислены при установке текста
-    
-    self.text = options and options.text or ""
-    self.font = love.graphics.getFont()
-    self.color = options and options.color or {1, 1, 1, 1} -- Белый цвет по умолчанию
+    Element.initialize(self, options)
+
+    -- === Текст ===
+    self.text = options.text or ""
+    self.font = options.font or love.graphics.getFont()
     self.align = options.align or "left" -- left, center, right
-    self.wrap = options.wrap or false -- Перенос текста
-    self.limit = options.limit -- Максимальная ширина текста
-    
-    
-    
-    -- Вычисляем размеры при инициализации
-    self:updateDimensions()
+    self.wrap = options.wrap or false     -- Перенос текста
+    self.limit = options.limit            -- Ширина для переноса
+
+    -- === Цвет текста через стиль ===
+    self:setStyle({
+        text_color = options.color or {1, 1, 1, 1} -- Белый по умолчанию
+    })
+
+    -- === Автоматическое обновление размеров ===
+    self:autoSize()
 end
 
--- Обновляет размеры label в соответствии с текстом
-function Label:updateDimensions()
+-- === Автоматически вычисляет ширину и высоту под текст ===
+function Label:autoSize()
     if not self.font then return end
-    
+
     if self.wrap and self.limit then
-        self.width = self.limit
+        self.contentWidth = self.limit
         local _, wrapped = self.font:getWrap(self.text, self.limit)
-        self.height = #wrapped * self.font:getHeight()
+        self.contentHeight = #wrapped * self.font:getHeight()
     else
-        self.width = self.font:getWidth(self.text)
-        self.height = self.font:getHeight()
+        self.contentWidth = self.font:getWidth(self.text)
+        self.contentHeight = self.font:getHeight()
+    end
+
+    -- Если не заданы width/height явно — используем contentWidth/contentHeight
+    if not self._widthSetExplicitly then
+        self.width = self.contentWidth + self:getPaddingX()
+    end
+    if not self._heightSetExplicitly then
+        self.height = self.contentHeight + self:getPaddingY()
     end
 end
 
--- Устанавливает текст и обновляет размеры
+-- === Обновляем размеры при изменении текста ===
 function Label:setText(text)
     self.text = text or ""
-    self:updateDimensions()
+    self:autoSize()
     return self
 end
 
--- Устанавливает шрифт и обновляет размеры
+-- === Устанавливаем шрифт ===
 function Label:setFont(font)
     self.font = font or love.graphics.getFont()
-    self:updateDimensions()
+    self:autoSize()
     return self
 end
 
--- Устанавливает цвет текста
-function Label:setColor(color)
-    self.color = color or {1, 1, 1, 1}
-    return self
-end
-
--- Устанавливает выравнивание текста
+-- === Устанавливаем выравнивание ===
 function Label:setAlign(align)
     self.align = align or "left"
     return self
 end
 
--- Отрисовка label
-function Label:drawSelf()
-    
-    if not self.visible or not self.font or #self.text == 0 then return end
-    
-    
-    
-    local oldColor = {love.graphics.getColor()}
+-- === Рисование контента (текста) внутри padding'ов ===
+function Label:drawContent(width, height)
+    if #self.text == 0 or not self.font then return end
+
+    local color = self:getStyle("text_color") or {1, 1, 1, 1}
     love.graphics.setFont(self.font)
-    love.graphics.setColor(self.color)
-    
+    love.graphics.setColor(color)
+
+    local x = 0
+    local y = 0
+
     if self.wrap and self.limit then
-        love.graphics.printf(self.text, self.x, self.y, self.limit, self.align)
+        love.graphics.printf(self.text, x, y, self.limit, self.align)
     else
-        local x = self.x
         if self.align == "center" then
-            x = x + (self.width / 2)
+            x = width / 2
         elseif self.align == "right" then
-            x = x + self.width
+            x = width
         end
-        
-        love.graphics.print(self.text, x, self.y, 0, 1, 1, 
-                           self.align == "center" and self.width/2 or 
-                           self.align == "right" and self.width or 0)
+
+        love.graphics.print(self.text, x, y, 0, 1, 1,
+            self.align == "center" and width / 2 or
+            self.align == "right" and width or 0)
     end
-    
-    love.graphics.setColor(oldColor)
 end
 
 return Label
