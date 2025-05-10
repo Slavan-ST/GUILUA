@@ -79,7 +79,7 @@ end
 
 -- === Рисование контента кнопки ===
 function Button:drawContent()
-    love.graphics.setColor(self:getStyle("text_color"))
+    love.graphics.setColor(unpack(self:getStyle("text_color") or {1,1,1,1}))
     love.graphics.printf(
         self.text,
         0, -- Уже учитываем padding в translate

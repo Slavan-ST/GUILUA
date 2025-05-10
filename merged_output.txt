@@ -30,16 +30,14 @@ function love.load()
         
             zIndex = 1,
             scrollBarSize = 10,
-            scrollBarColor = {0.1, 0.5, 0.2, 0.1}
+            
         })
-      
-    -- Добавление элементов в ScrollView
     for i = 1, 50 do
         local label = Label:new(
           {
             x = 10, y = 15,
             text = "Элемент " .. i,
-            color = {1, 1, 1, 1},
+            
             
                 zIndex = 1000,
                 align = "left",
@@ -93,7 +91,7 @@ function love.update(dt)
 end
 
 function love.draw()
-    love.graphics.clear(0.1, 0.1, 0.15)
+    --love.graphics.clear(0.1, 0.1, 0.15)
     ui:draw()
     DebugConsole.draw()
 end
@@ -142,7 +140,7 @@ end
 
 local class = require("lib.middleclass")
 
-
+local Drawable = require("src.ui.core.mixins.Drawable")
 local EventDispatcher = require("src.ui.core.mixins.EventDispatcher")
 local Hierarchy = require("src.ui.core.mixins.Hierarchy")
 local Visibility = require("src.ui.core.mixins.Visibility")
@@ -162,6 +160,7 @@ local Offsetable = require("src.ui.core.mixins.Offsetable")
 local Element = class("Element")
 
 -- Применяем миксины
+Element:mixin(Drawable)
 Element:mixin(Hierarchy)
 Element:mixin(Visibility)
 Element:mixin(Geometry)
@@ -181,11 +180,12 @@ Element:mixin(Offsetable)
 function Element:initialize(options)
   
    self.options = options or {}
-  
-    -- Инициализируем EventDispatcher
+   
+   Drawable.initialize(self, options)
+       -- Инициализируем EventDispatcher
     EventDispatcher.initialize(self, self.options)
-
     -- Инициализируем миксины
+    
     Hierarchy.initialize(self, self.options)
     Visibility.initialize(self, self.options)
     Geometry.initialize(self, self.options)
@@ -204,76 +204,13 @@ end
 
 function Element:draw()
     if not self.visible then return end
-    self:drawSelf()
+    if self.drawSelf then self:drawSelf() end
 end
 
 function Element:update(dt)
-    self:updateAnimations(dt)
+    if self.updateAnimations then self:updateAnimations(dt) end
 end
 
-function Element:drawSelf()
-    if not self.visible then return end
-
-    love.graphics.push() -- <-- Сначала push()
-
-    -- 1. Устанавливаем scissor (обрезку), если включена
-    self:applyScissor()
-
-    -- 2. Рисуем фон элемента
-    love.graphics.setColor(self:getStyle("background_color"))
-    love.graphics.rectangle(
-        "fill",
-        self.x + self:getMarginLeft(),
-        self.y + self:getMarginTop(),
-        self.width - self:getMarginX(),
-        self.height - self:getMarginY()
-    )
-
-    -- 3. Рисуем рамку, если задана
-    local borderColor = self:getStyle("border_color")
-    local borderWidth = self:getStyle("border_width") or 0
-
-    if borderColor and borderWidth > 0 then
-        love.graphics.setColor(borderColor)
-        love.graphics.setLineWidth(borderWidth)
-        love.graphics.rectangle(
-            "line",
-            self.x + self:getMarginLeft() + borderWidth / 2,
-            self.y + self:getMarginTop() + borderWidth / 2,
-            self.width - self:getMarginX() - borderWidth,
-            self.height - self:getMarginY() - borderWidth
-        )
-    end
-
-    -- 4. Переводим координаты на offset (например, для скролла)
-    love.graphics.translate(
-        self:getOffsetX(),
-        self:getOffsetY()
-    )
-
-    -- 5. Рисуем содержимое внутри padding'ов
-    love.graphics.translate(
-        self.x + self:getMarginLeft() + self:getPaddingLeft(),
-        self.y + self:getMarginTop() + self:getPaddingTop()
-    )
-
-    -- Вызываем drawContent(), если определён (может быть у контейнеров/прокрутки)
-    if self.drawContent then
-        self:drawContent()
-    end
-
-    love.graphics.pop() -- <-- pop() закрывает весь блок
-    self:clearScissor() -- <-- восстанавливаем старый scissor вне push/pop
-end
-function Element:drawContent()
-  if self.children and #self.children > 0 then
-                  for _, child in ipairs(self.children) do
-                      
-                      child:draw()
-                      
-                  end
-            end
-end
 
 return Element
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/Element.lua ====
@@ -281,8 +218,6 @@ return Element
 
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/ThemeManager.lua ====
-
--- src/ui/core/ThemeManager.lua
 
 local ThemeManager = {}
 
@@ -303,7 +238,7 @@ ThemeManager.themes = {
     dark = {
         scrollbar_size = 8,
         scrollbar_margin = 3,
-        scrollbar_color = {0.8, 0.3, 0.3, 0.6},
+        scrollbar_color = {0.9, 0.9, 0.3, 0.6},
 
         background_color = {0.2, 0.2, 0.2, 1},
         bounding_box_color = {0.5, 0.5, 0.5, 1},
@@ -314,28 +249,32 @@ ThemeManager.themes = {
     }
 }
 
--- Текущая активная тема
-ThemeManager.currentTheme = "default"
+ThemeManager.currentTheme = ThemeManager.themes.dark -- по умолчанию тема dark
 
 -- Получить значение из текущей темы с fallback к дефолту
 function ThemeManager.get(key, fallback)
-    local currentTheme = ThemeManager.themes[ThemeManager.currentTheme]
+    local currentTheme = ThemeManager.currentTheme
     if currentTheme and currentTheme[key] ~= nil then
+        require("src.ui.utils.DebugConsole").log(currentTheme[key])
         return currentTheme[key]
+    elseif ThemeManager.themes.default and ThemeManager.themes.default[key] ~= nil then
+        require("src.ui.utils.DebugConsole").log(ThemeManager.themes.default[key])
+        
+        
+        return ThemeManager.themes.default[key]
     end
-    return ThemeManager.themes.default[key] or fallback
+
+    return fallback
 end
 
 -- Установить текущую тему
 function ThemeManager.setTheme(name)
     if ThemeManager.themes[name] then
-        ThemeManager.currentTheme = name
+        ThemeManager.currentTheme = ThemeManager.themes[name]
     else
-        error("Unknown theme: " .. tostring(name))
+        require("src.ui.utils.DebugConsole").log("Unknown theme: " .. tostring(name))
     end
 end
-
-
 
 return ThemeManager
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/ThemeManager.lua ====
@@ -931,40 +870,72 @@ return Draggable
 
 local Drawable = {}
 
-function Drawable:drawSelf()
-    -- Обрезка по границам элемента
-    love.graphics.setScissor(self.x, self.y, self.width, self.height)
-
-    -- Фон
-    if self:getStyle("background_color") then
-        love.graphics.setColor(self:getStyle("background_color"))
-        love.graphics.rectangle("fill", self.x, self.y, self.width, self.height,
-            self:getStyle("corner_radius") or 0)
-    end
-
-    -- Рамка
-    if self:getStyle("border_color") and (self.style.border_width or 0) > 0 then
-        love.graphics.setColor(self:getStyle("border_color"))
-        love.graphics.setLineWidth(self.style.border_width or 1)
-        love.graphics.rectangle("line", self.x, self.y, self.width, self.height,
-            self:getStyle("corner_radius") or 0)
-    end
-
-    -- Сброс обрезки
-    love.graphics.setScissor()
-
-    -- Тело контента (если есть)
-    love.graphics.push()
-    love.graphics.translate(self.x + self:getPaddingLeft(), self.y + self:getPaddingTop())
-
-    self:drawContent()
-
-    love.graphics.pop()
+function Drawable:initialize(options)
+    self.zIndex = options and options.zIndex or 0
 end
 
--- Можно переопределять в потомках
+function Drawable:drawSelf()
+    if not self.visible then return end
+
+    love.graphics.push() -- <-- Сначала push()
+
+    -- 1. Устанавливаем scissor (обрезку), если включена
+    self:applyScissor()
+
+    -- 2. Рисуем фон элемента
+    love.graphics.setColor(self:getStyle("background_color"))
+    love.graphics.rectangle(
+        "fill",
+        self.x + self:getMarginLeft(),
+        self.y + self:getMarginTop(),
+        self.width - self:getMarginX(),
+        self.height - self:getMarginY()
+    )
+
+    -- 3. Рисуем рамку, если задана
+    local borderColor = self:getStyle("border_color")
+    local borderWidth = self:getStyle("border_width") or 0
+
+    if borderColor and borderWidth > 0 then
+        love.graphics.setColor(borderColor)
+        love.graphics.setLineWidth(borderWidth)
+        love.graphics.rectangle(
+            "line",
+            self.x + self:getMarginLeft() + borderWidth / 2,
+            self.y + self:getMarginTop() + borderWidth / 2,
+            self.width - self:getMarginX() - borderWidth,
+            self.height - self:getMarginY() - borderWidth
+        )
+    end
+
+    -- 4. Переводим координаты на offset (например, для скролла)
+    love.graphics.translate(
+        self:getOffsetX(),
+        self:getOffsetY()
+    )
+
+    -- 5. Рисуем содержимое внутри padding'ов
+    love.graphics.translate(
+        self.x + self:getMarginLeft() + self:getPaddingLeft(),
+        self.y + self:getMarginTop() + self:getPaddingTop()
+    )
+
+    -- Вызываем drawContent(), если определён (может быть у контейнеров/прокрутки)
+    if self.drawContent then
+        self:drawContent()
+    end
+
+    love.graphics.pop() -- <-- pop() закрывает весь блок
+    self:clearScissor() -- <-- восстанавливаем старый scissor вне push/pop
+end
 function Drawable:drawContent()
-    -- По умолчанию ничего не рисует
+  if self.children and #self.children > 0 then
+                  for _, child in ipairs(self.children) do
+                      
+                      child:draw()
+                      
+                  end
+            end
 end
 
 return Drawable
@@ -1445,39 +1416,9 @@ end
 
 -- Получение значения стиля с fallback к текущей теме
 function Stylable:getStyle(key)
-    local value = self.style[key]
-    if value ~= nil then
-        return value
-    end
-
-    local theme = ThemeManager.currentTheme
-    return theme[self.type] and theme[self.type][key] or ThemeManager.themes.default[key]
+    return ThemeManager.get(key)
 end
 
--- Установка цвета фона
-function Stylable:setBackgroundColor(color)
-    self.style.background_color = color
-end
-
--- Установка цвета рамки
-function Stylable:setBorderColor(color)
-    self.style.border_color = color
-end
-
--- Установка толщины рамки
-function Stylable:setBorderWidth(width)
-    self.style.border_width = width
-end
-
--- Установка внутреннего отступа
-function Stylable:setPadding(padding)
-    self.style.padding = padding
-end
-
--- Установка внешнего отступа
-function Stylable:setMargin(margin)
-    self.style.margin = margin
-end
 
 return Stylable
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Stylable.lua ====
@@ -1608,7 +1549,7 @@ end
 
 -- === Рисование контента кнопки ===
 function Button:drawContent()
-    love.graphics.setColor(self:getStyle("text_color"))
+    love.graphics.setColor(unpack(self:getStyle("text_color") or {1,1,1,1}))
     love.graphics.printf(
         self.text,
         0, -- Уже учитываем padding в translate
@@ -1741,10 +1682,6 @@ function ScrollView:initialize(options)
         y = 0,
         width = self.width,
         height = 0,
-        paddingLeft = options.contentPaddingLeft or options.paddingLeft or 0,
-        paddingRight = options.contentPaddingRight or options.paddingRight or 0,
-        paddingTop = options.contentPaddingTop or options.paddingTop or 0,
-        paddingBottom = options.contentPaddingBottom or options.paddingBottom or 0,
         scissor = false,
     })
 

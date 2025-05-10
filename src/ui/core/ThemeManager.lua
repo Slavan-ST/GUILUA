@@ -1,5 +1,3 @@
--- src/ui/core/ThemeManager.lua
-
 local ThemeManager = {}
 
 -- Таблица для хранения тем
@@ -19,7 +17,7 @@ ThemeManager.themes = {
     dark = {
         scrollbar_size = 8,
         scrollbar_margin = 3,
-        scrollbar_color = {0.8, 0.3, 0.3, 0.6},
+        scrollbar_color = {0.9, 0.9, 0.3, 0.6},
 
         background_color = {0.2, 0.2, 0.2, 1},
         bounding_box_color = {0.5, 0.5, 0.5, 1},
@@ -30,27 +28,28 @@ ThemeManager.themes = {
     }
 }
 
--- Текущая активная тема
-ThemeManager.currentTheme = "default"
+ThemeManager.currentTheme = ThemeManager.themes.dark -- по умолчанию тема dark
 
 -- Получить значение из текущей темы с fallback к дефолту
 function ThemeManager.get(key, fallback)
-    local currentTheme = ThemeManager.themes[ThemeManager.currentTheme]
+    local currentTheme = ThemeManager.currentTheme
     if currentTheme and currentTheme[key] ~= nil then
+        
         return currentTheme[key]
+    elseif ThemeManager.themes.default and ThemeManager.themes.default[key] ~= nil then
+        return ThemeManager.themes.default[key]
     end
-    return ThemeManager.themes.default[key] or fallback
+
+    return fallback
 end
 
 -- Установить текущую тему
 function ThemeManager.setTheme(name)
     if ThemeManager.themes[name] then
-        ThemeManager.currentTheme = name
+        ThemeManager.currentTheme = ThemeManager.themes[name]
     else
-        error("Unknown theme: " .. tostring(name))
+        
     end
 end
-
-
 
 return ThemeManager

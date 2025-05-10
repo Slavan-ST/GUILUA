@@ -3,6 +3,7 @@ local UIButton = require("src.ui.elements.Button")
 local Fonts = require("src.ui.fonts.init")
 local DebugConsole = require("src.ui.utils.DebugConsole")
 local ScrollView = require("src.ui.elements.ScrollView")
+local UIInputField = require("src.ui.elements.UIInputField")
 local Label = require("src.ui.elements.Label")
 local ThemeManager = require("src.ui.core.ThemeManager")
 local Element = require("src.ui.core.Element")
@@ -26,16 +27,14 @@ function love.load()
         
             zIndex = 1,
             scrollBarSize = 10,
-            scrollBarColor = {0.1, 0.5, 0.2, 0.1}
+            
         })
-      
-    -- Добавление элементов в ScrollView
     for i = 1, 50 do
         local label = Label:new(
           {
             x = 10, y = 15,
             text = "Элемент " .. i,
-            color = {1, 1, 1, 1},
+            
             
                 zIndex = 1000,
                 align = "left",
@@ -77,6 +76,21 @@ function love.load()
 
     ui:addElement(consoleBtn)
     ui:addElement(testBtn)
+    
+    local input = UIInputField:new({
+    x = 100,
+    y = 150,
+    width = 300,
+    height = 40,
+    placeholder = "Введите имя...",
+    onTextChanged = function(field, text)
+        DebugConsole.log("Текст изменён:", text)
+    end,
+    onEnterPressed = function(field, text)
+        DebugConsole.log("Нажат Enter:", text)
+    end
+})
+ui:addElement(input)
 
     DebugConsole.log("UI инициализирован через UIManager")
 end
@@ -89,7 +103,7 @@ function love.update(dt)
 end
 
 function love.draw()
-    love.graphics.clear(0.1, 0.1, 0.15)
+    --love.graphics.clear(0.1, 0.1, 0.15)
     ui:draw()
     DebugConsole.draw()
 end
@@ -129,4 +143,12 @@ function love.touchmoved(id, x, y, dx, dy, pressure)
         dy = dy,
         pressure = pressure
     })
+  
+  function love.textinput(text)
+    ui:handleEvent({ type = "textinput", text = text })
+end
+
+function love.keypressed(key, scancode, isrepeat)
+    ui:handleEvent({ type = "keypressed", key = key, scancode = scancode, isrepeat = isrepeat })
+end
 end

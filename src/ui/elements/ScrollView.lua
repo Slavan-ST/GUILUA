@@ -14,10 +14,6 @@ function ScrollView:initialize(options)
         y = 0,
         width = self.width,
         height = 0,
-        paddingLeft = options.contentPaddingLeft or options.paddingLeft or 0,
-        paddingRight = options.contentPaddingRight or options.paddingRight or 0,
-        paddingTop = options.contentPaddingTop or options.paddingTop or 0,
-        paddingBottom = options.contentPaddingBottom or options.paddingBottom or 0,
         scissor = false,
     })
 

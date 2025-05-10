@@ -31,38 +31,8 @@ end
 
 -- Получение значения стиля с fallback к текущей теме
 function Stylable:getStyle(key)
-    local value = self.style[key]
-    if value ~= nil then
-        return value
-    end
-
-    local theme = ThemeManager.currentTheme
-    return theme[self.type] and theme[self.type][key] or ThemeManager.themes.default[key]
+    return ThemeManager.get(key)
 end
 
--- Установка цвета фона
-function Stylable:setBackgroundColor(color)
-    self.style.background_color = color
-end
-
--- Установка цвета рамки
-function Stylable:setBorderColor(color)
-    self.style.border_color = color
-end
-
--- Установка толщины рамки
-function Stylable:setBorderWidth(width)
-    self.style.border_width = width
-end
-
--- Установка внутреннего отступа
-function Stylable:setPadding(padding)
-    self.style.padding = padding
-end
-
--- Установка внешнего отступа
-function Stylable:setMargin(margin)
-    self.style.margin = margin
-end
 
 return Stylable
