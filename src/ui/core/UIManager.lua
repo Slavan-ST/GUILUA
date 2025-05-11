@@ -137,8 +137,9 @@ end
 
 function UIManager:handleEvent(event)
     if not event.x or not event.y then
+        require("src.ui.utils.DebugConsole").log("event:", event.type)
         -- События без координат (например, клавиатурные) обрабатываются как раньше
-        if self.focused and self.focused:handleEvent(event) then
+        if self.focused and self.focused:dispatchEvent(event) then
             return true
         end
         return false

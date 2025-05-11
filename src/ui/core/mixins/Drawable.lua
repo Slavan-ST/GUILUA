@@ -49,13 +49,13 @@ function Drawable:drawSelf()
         self.x + self:getMarginLeft() + self:getPaddingLeft(),
         self.y + self:getMarginTop() + self:getPaddingTop()
     )
-
+    
     -- Вызываем drawContent(), если определён (может быть у контейнеров/прокрутки)
     if self.drawContent then
         self:drawContent()
     end
 
-    love.graphics.pop() -- <-- pop() закрывает весь блок
+     love.graphics.pop()-- <-- pop() закрывает весь блок
     self:clearScissor() -- <-- восстанавливаем старый scissor вне push/pop
 end
 function Drawable:drawContent()

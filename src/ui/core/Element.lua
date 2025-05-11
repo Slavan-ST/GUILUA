@@ -1,5 +1,6 @@
-local class = require("lib.middleclass")
+-- /src/ui/core/Element.lua
 
+local class = require("lib.middleclass")
 local Drawable = require("src.ui.core.mixins.Drawable")
 local EventDispatcher = require("src.ui.core.mixins.EventDispatcher")
 local Hierarchy = require("src.ui.core.mixins.Hierarchy")
@@ -15,7 +16,7 @@ local Animation = require("src.ui.core.mixins.Animation")
 local Scissorable = require("src.ui.core.mixins.Scissorable")
 local Spacing = require("src.ui.core.mixins.Spacing")
 local Offsetable = require("src.ui.core.mixins.Offsetable")
-
+local InteractiveEvents = require("src.ui.core.mixins.InteractiveEvents") -- ← NEW
 
 local Element = class("Element")
 
@@ -35,31 +36,26 @@ Element:mixin(Animation)
 Element:mixin(Scissorable)
 Element:mixin(Spacing)
 Element:mixin(Offsetable)
-
+Element:mixin(InteractiveEvents) -- ← NEW
 
 function Element:initialize(options)
-  
    self.options = options or {}
-   
    Drawable.initialize(self, options)
-       -- Инициализируем EventDispatcher
-    EventDispatcher.initialize(self, self.options)
-    -- Инициализируем миксины
-    
-    Hierarchy.initialize(self, self.options)
-    Visibility.initialize(self, self.options)
-    Geometry.initialize(self, self.options)
-    ZIndex.initialize(self, self.options)
-    Interactivity.initialize(self, self.options)
-    ContentLayout.initialize(self, self.options)
-    Stylable.initialize(self, self.options)
-    Draggable.initialize(self, self.options)
-    DropTarget.initialize(self, self.options)
-    Animation.initialize(self, self.options)
-    Scissorable.initialize(self, options)
-    Spacing.initialize(self, options)
-    Offsetable.initialize(self, options)
-    
+   EventDispatcher.initialize(self, self.options)
+
+   Hierarchy.initialize(self, self.options)
+   Visibility.initialize(self, self.options)
+   Geometry.initialize(self, self.options)
+   ZIndex.initialize(self, self.options)
+   Interactivity.initialize(self, self.options)
+   ContentLayout.initialize(self, self.options)
+   Stylable.initialize(self, self.options)
+   Draggable.initialize(self, self.options)
+   DropTarget.initialize(self, self.options)
+   Animation.initialize(self, self.options)
+   Scissorable.initialize(self, options)
+   Spacing.initialize(self, options)
+   Offsetable.initialize(self, options)
 end
 
 function Element:draw()
@@ -70,6 +66,5 @@ end
 function Element:update(dt)
     if self.updateAnimations then self:updateAnimations(dt) end
 end
-
 
 return Element

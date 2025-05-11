@@ -106,7 +106,18 @@ local function _mixin(aClass, mixin)
 
   for name, method in pairs(mixin) do
     if name ~= "included" and name ~= "static" then
-      _declareInstanceMethod(aClass, name, method)
+      local existing = aClass.__instanceDict[name]
+
+      -- Если метод уже существует, создаем "цепочку" вызовов
+      if existing and type(existing) == "function" and type(method) == "function" then
+        _declareInstanceMethod(aClass, name, function(self, ...)
+          local result1 = existing(self, ...)
+          local result2 = method(self, ...)
+          return result1 or result2 -- или игнорируйте результат, если не нужен
+        end)
+      else
+        _declareInstanceMethod(aClass, name, method)
+      end
     end
   end
 

@@ -29,6 +29,7 @@ function TextEditable:initialize(options)
     self:addEventListener("touchpressed", function(e) return self:onTouchPressed(e) end)
     self:addEventListener("focusgained", function() self:onFocus() end)
     self:addEventListener("focuslost", function() self:onBlur() end)
+    self:addEventListener("textinput", function(text) self:textinput(text) end)
 end
 
 -- === Обновление состояния при фокусе ===
@@ -44,8 +45,9 @@ end
 
 -- === Обработка текстового ввода ===
 function TextEditable:textinput(text)
+    require("src.ui.utils.DebugConsole").log("text:", text)
     if not self.hasFocus then return end
-
+    require("src.ui.utils.DebugConsole").log("text: handle", text)
     -- Применяем фильтр ввода
     if self.inputFilter and not self.inputFilter(text) then
         return
@@ -60,6 +62,8 @@ function TextEditable:textinput(text)
     local newText = string.sub(self.text, 1, self.cursorPos) .. text .. string.sub(self.text, self.cursorPos + 1)
     self:setText(newText)
     self.cursorPos = self.cursorPos + #text
+    
+    self:dispatchEvent({ type = "textinput", text})
 end
 
 -- === Обработка клавиш (backspace, delete, стрелки и т.д.) ===
@@ -93,6 +97,36 @@ function TextEditable:keypressed(key)
 
     self.cursorTimer = 0
     self.cursorVisible = true
+    
+    self:dispatchEvent({ type = "keypressed", key})
+end
+
+function TextEditable:onTouchPressed(e)
+    require("src.ui.utils.DebugConsole").log("text:", e.type
+      )
+    -- Проверяем, попали ли мы по области элемента
+    if e.x >= self.x and e.x <= self.x + self.width and
+       e.y >= self.y and e.y <= self.y + self.height then
+        self:requestFocus()
+        
+        love.keyboard.setTextInput(true) -- Включаем ввод текста (на Android откроет клавиатуру)
+        return true -- событие обработано
+    else
+        return false
+    end
+end
+
+function TextEditable:setFocus(focus)
+    if focus then
+        self:onFocus()
+    else
+        self:onBlur()
+    end
+end
+
+function TextEditable:requestFocus()
+    -- Предположим, что есть менеджер фокусов или просто активируем фокус здесь
+    self:setFocus(true)
 end
 
 -- === Установка нового текста с вызовом callback ===

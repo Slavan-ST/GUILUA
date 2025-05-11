@@ -2,14 +2,15 @@
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/main.lua ====
 
+-- main.lua
 local UIManager = require("src.ui.core.UIManager")
 local UIButton = require("src.ui.elements.Button")
 local Fonts = require("src.ui.fonts.init")
 local DebugConsole = require("src.ui.utils.DebugConsole")
 local ScrollView = require("src.ui.elements.ScrollView")
+local UIInputField = require("src.ui.elements.UIInputField")
 local Label = require("src.ui.elements.Label")
 local ThemeManager = require("src.ui.core.ThemeManager")
-local Element = require("src.ui.core.Element")
 
 local ui = UIManager.getInstance()
 
@@ -21,64 +22,73 @@ function love.load()
     -- Установка темы
     ThemeManager.setTheme("dark")
 
-    -- Создание ScrollView
+    -- === Создание ScrollView ===
     local scrollView = ScrollView:new({
         x = 100,
         y = 100,
         width = love.graphics.getWidth() - 200,
-        height =love.graphics.getHeight() - 200,
-        
-            zIndex = 1,
-            scrollBarSize = 10,
-            
-        })
+        height = love.graphics.getHeight() - 200,
+        scrollBarSize = 10,
+        zIndex = 1
+    })
+
     for i = 1, 50 do
-        local label = Label:new(
-          {
-            x = 10, y = 15,
+        local label = Label:new({
             text = "Элемент " .. i,
-            
-            
-                zIndex = 1000,
-                align = "left",
-                wrap = true
-            }
-        )
+            align = "left",
+            wrap = true,
+            padding = 8
+        })
         scrollView:addChild(label)
     end
 
     ui:addElement(scrollView)
 
-    -- Кнопка открытия консоли
+    -- === Кнопка открытия консоли ===
     local consoleBtn = UIButton({
         x = love.graphics.getWidth() - 210,
         y = 10,
         width = 200,
         height = 40,
         text = "КОНСОЛЬ",
-        
-            onClick = function()
-                DebugConsole.toggle()
-            end
-        })
+        onClick = function()
+            DebugConsole.toggle()
+        end
+    })
 
-    -- Тестовая кнопка (показ/скрытие scrollView)
+    -- === Тестовая кнопка (показ/скрытие ScrollView) ===
     local testBtn = UIButton({
         x = love.graphics.getWidth() - 210,
         y = 50,
         width = 200,
         height = 40,
         text = "scrollView",
-        
-            onClick = function()
-                scrollView.visible = not scrollView.visible
-                scrollView.enabled = not scrollView.enabled
-            end,
-            zIndex = 1
-        })
+        zIndex = 1,
+        onClick = function()
+            scrollView.visible = not scrollView.visible
+            scrollView.enabled = not scrollView.enabled
+        end
+    })
 
     ui:addElement(consoleBtn)
     ui:addElement(testBtn)
+
+    -- === Поле ввода текста ===
+    local input = UIInputField:new({
+        x = 100,
+        y = 150,
+        width = 300,
+        height = 40,
+        placeholder = "Введите имя...",
+        onTextChanged = function(field, text)
+            DebugConsole.log("Текст изменён:", text)
+        end,
+        onEnterPressed = function(field, text)
+            DebugConsole.log("Нажат Enter:", text)
+        end
+    })
+
+    ui:addElement(input)
 
     DebugConsole.log("UI инициализирован через UIManager")
 end
@@ -91,12 +101,12 @@ function love.update(dt)
 end
 
 function love.draw()
-    --love.graphics.clear(0.1, 0.1, 0.15)
+    -- love.graphics.clear(0.1, 0.1, 0.15)
     ui:draw()
     DebugConsole.draw()
 end
 
--- TOUCH обработчики событий
+-- === Обработчики событий ===
 function love.touchpressed(id, x, y, dx, dy, pressure)
     ui:handleEvent({
         type = "touchpressed",
@@ -132,14 +142,23 @@ function love.touchmoved(id, x, y, dx, dy, pressure)
         pressure = pressure
     })
 end
+
+function love.textinput(text)
+    ui:handleEvent({ type = "textinput", text = text })
+end
+
+function love.keypressed(key, scancode, isrepeat)
+    ui:handleEvent({ type = "keypressed", key = key, scancode = scancode, isrepeat = isrepeat })
+end
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/main.lua ====
 
 
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/Element.lua ====
 
-local class = require("lib.middleclass")
+-- /src/ui/core/Element.lua
 
+local class = require("lib.middleclass")
 local Drawable = require("src.ui.core.mixins.Drawable")
 local EventDispatcher = require("src.ui.core.mixins.EventDispatcher")
 local Hierarchy = require("src.ui.core.mixins.Hierarchy")
@@ -155,7 +174,7 @@ local Animation = require("src.ui.core.mixins.Animation")
 local Scissorable = require("src.ui.core.mixins.Scissorable")
 local Spacing = require("src.ui.core.mixins.Spacing")
 local Offsetable = require("src.ui.core.mixins.Offsetable")
-
+local InteractiveEvents = require("src.ui.core.mixins.InteractiveEvents") -- ← NEW
 
 local Element = class("Element")
 
@@ -175,31 +194,26 @@ Element:mixin(Animation)
 Element:mixin(Scissorable)
 Element:mixin(Spacing)
 Element:mixin(Offsetable)
-
+Element:mixin(InteractiveEvents) -- ← NEW
 
 function Element:initialize(options)
-  
    self.options = options or {}
-   
    Drawable.initialize(self, options)
-       -- Инициализируем EventDispatcher
-    EventDispatcher.initialize(self, self.options)
-    -- Инициализируем миксины
-    
-    Hierarchy.initialize(self, self.options)
-    Visibility.initialize(self, self.options)
-    Geometry.initialize(self, self.options)
-    ZIndex.initialize(self, self.options)
-    Interactivity.initialize(self, self.options)
-    ContentLayout.initialize(self, self.options)
-    Stylable.initialize(self, self.options)
-    Draggable.initialize(self, self.options)
-    DropTarget.initialize(self, self.options)
-    Animation.initialize(self, self.options)
-    Scissorable.initialize(self, options)
-    Spacing.initialize(self, options)
-    Offsetable.initialize(self, options)
-    
+   EventDispatcher.initialize(self, self.options)
+
+   Hierarchy.initialize(self, self.options)
+   Visibility.initialize(self, self.options)
+   Geometry.initialize(self, self.options)
+   ZIndex.initialize(self, self.options)
+   Interactivity.initialize(self, self.options)
+   ContentLayout.initialize(self, self.options)
+   Stylable.initialize(self, self.options)
+   Draggable.initialize(self, self.options)
+   DropTarget.initialize(self, self.options)
+   Animation.initialize(self, self.options)
+   Scissorable.initialize(self, options)
+   Spacing.initialize(self, options)
+   Offsetable.initialize(self, options)
 end
 
 function Element:draw()
@@ -210,7 +224,6 @@ end
 function Element:update(dt)
     if self.updateAnimations then self:updateAnimations(dt) end
 end
-
 
 return Element
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/Element.lua ====
@@ -255,12 +268,9 @@ ThemeManager.currentTheme = ThemeManager.themes.dark -- по умолчанию 
 function ThemeManager.get(key, fallback)
     local currentTheme = ThemeManager.currentTheme
     if currentTheme and currentTheme[key] ~= nil then
-        require("src.ui.utils.DebugConsole").log(currentTheme[key])
+        
         return currentTheme[key]
     elseif ThemeManager.themes.default and ThemeManager.themes.default[key] ~= nil then
-        require("src.ui.utils.DebugConsole").log(ThemeManager.themes.default[key])
-        
-        
         return ThemeManager.themes.default[key]
     end
 
@@ -272,7 +282,7 @@ function ThemeManager.setTheme(name)
     if ThemeManager.themes[name] then
         ThemeManager.currentTheme = ThemeManager.themes[name]
     else
-        require("src.ui.utils.DebugConsole").log("Unknown theme: " .. tostring(name))
+        
     end
 end
 
@@ -422,8 +432,9 @@ end
 
 function UIManager:handleEvent(event)
     if not event.x or not event.y then
+        require("src.ui.utils.DebugConsole").log("event:", event.type)
         -- События без координат (например, клавиатурные) обрабатываются как раньше
-        if self.focused and self.focused:handleEvent(event) then
+        if self.focused and self.focused:dispatchEvent(event) then
             return true
         end
         return false
@@ -1142,6 +1153,42 @@ return EventDispatcher
 
 
 
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Focus.lua ====
+
+local Focus = {}
+local  UIManager = require("src.ui.core.UIManager")
+local ui = UIManager.getInstance()
+
+
+function Focus:initialize(options)
+    self.hasFocus = false
+
+    -- Привязываем обработчики событий, если они нужны
+    if options and options.focusHandlers then
+        self:on("focusgained", options.focusHandlers.onFocusGained)
+        self:on("focuslost",  options.focusHandlers.onFocusLost)
+    end
+end
+
+-- Устанавливает фокус на этот элемент
+function Focus:focus()
+    
+    if self.interactive ~= false then
+        ui:setFocus(self)
+    end
+    return self
+end
+
+-- Проверяет, находится ли элемент в фокусе
+function Focus:isFocused()
+    return self.hasFocus == true
+end
+
+return Focus
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Focus.lua ====
+
+
+
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Geometry.lua ====
 
 local Geometry = {}
@@ -1223,6 +1270,60 @@ end
 
 return Hierarchy
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Hierarchy.lua ====
+
+
+
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/InteractiveEvents.lua ====
+
+-- /src/ui/core/mixins/InteractiveEvents.lua
+
+local InteractiveEvents = {}
+
+function InteractiveEvents:initialize()
+    -- Подписываемся на события через EventDispatcher
+    self:addEventListener("touchpressed", function(e) return self:onTouchPressed(e) end)
+    self:addEventListener("touchreleased", function(e) return self:onTouchReleased(e) end)
+    self:addEventListener("touchmoved", function(e) return self:onTouchMoved(e) end)
+    self:addEventListener("keypressed", function(e) return self:onKeyPressed(e) end)
+    self:addEventListener("textinput", function(e) return self:onTextInput(e) end)
+end
+
+-- Базовая обработка нажатия
+function InteractiveEvents:onTouchPressed(event)
+    if not self.interactive or not self.enabled then return false end
+    self.pressed = true
+    return true
+end
+
+-- Обработка отпускания
+function InteractiveEvents:onTouchReleased(event)
+    if self.pressed and self:isInside(event.x, event.y) then
+        self:dispatchEvent({ type = "click" })
+    end
+    self.pressed = false
+    return true
+end
+
+-- Перемещение пальца
+function InteractiveEvents:onTouchMoved(event)
+    if self.pressed and not self:isInside(event.x, event.y) then
+        self.pressed = false
+    end
+    return false
+end
+
+-- Нажатие клавиши (например Enter)
+function InteractiveEvents:onKeyPressed(event)
+    return false
+end
+
+-- Ввод текста (например, при использовании UIInputField)
+function InteractiveEvents:onTextInput(text)
+    return false
+end
+
+return InteractiveEvents
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/InteractiveEvents.lua ====
 
 
 
@@ -1425,6 +1526,205 @@ return Stylable
 
 
 
+-- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/TextEditable.lua ====
+
+local TextEditable = {}
+
+function TextEditable:initialize(options)
+    -- === Свойства ввода текста ===
+    self.text = options.text or ""
+    self.placeholder = options.placeholder or ""
+    self.passwordMode = options.passwordMode or false
+    self.maxLength = options.maxLength or -1
+
+    -- === Цвета и стиль ===
+    self.textColor = options.textColor or {1, 1, 1, 1}
+    self.placeholderColor = options.placeholderColor or {0.7, 0.7, 0.7, 1}
+
+    -- === Курсор ===
+    self.hasFocus = false
+    self.cursorPos = #self.text
+    self.cursorVisible = true
+    self.cursorBlinkTime = 0.5
+    self.cursorTimer = 0
+
+    -- === Callbacks ===
+    self.onTextChanged = options.onTextChanged
+    self.onEnterPressed = options.onEnterPressed
+
+    -- === Фильтры ===
+    self.inputFilter = options.inputFilter -- function(char) return true/false end
+
+    -- === Регистрация обработчиков событий ===
+    self:addEventListener("touchpressed", function(e) return self:onTouchPressed(e) end)
+    self:addEventListener("focusgained", function() self:onFocus() end)
+    self:addEventListener("focuslost", function() self:onBlur() end)
+    self:addEventListener("textinput", function(text) self:textinput(text) end)
+end
+
+-- === Обновление состояния при фокусе ===
+function TextEditable:onFocus()
+    self.hasFocus = true
+    self.cursorTimer = 0
+    self.cursorVisible = true
+end
+
+function TextEditable:onBlur()
+    self.hasFocus = false
+end
+
+-- === Обработка текстового ввода ===
+function TextEditable:textinput(text)
+    require("src.ui.utils.DebugConsole").log("text:", text)
+    if not self.hasFocus then return end
+    require("src.ui.utils.DebugConsole").log("text: handle", text)
+    -- Применяем фильтр ввода
+    if self.inputFilter and not self.inputFilter(text) then
+        return
+    end
+
+    -- Проверка длины
+    if self.maxLength > 0 and #self.text >= self.maxLength then
+        return
+    end
+
+    -- Вставляем символ в позицию курсора
+    local newText = string.sub(self.text, 1, self.cursorPos) .. text .. string.sub(self.text, self.cursorPos + 1)
+    self:setText(newText)
+    self.cursorPos = self.cursorPos + #text
+    
+    self:dispatchEvent({ type = "textinput", text})
+end
+
+-- === Обработка клавиш (backspace, delete, стрелки и т.д.) ===
+function TextEditable:keypressed(key)
+    if not self.hasFocus then return end
+
+    if key == "backspace" then
+        if self.cursorPos > 0 then
+            local newText = string.sub(self.text, 1, self.cursorPos - 1) .. string.sub(self.text, self.cursorPos + 1)
+            self:setText(newText)
+            self.cursorPos = math.max(0, self.cursorPos - 1)
+        end
+    elseif key == "delete" then
+        if self.cursorPos < #self.text then
+            local newText = string.sub(self.text, 1, self.cursorPos) .. string.sub(self.text, self.cursorPos + 2)
+            self:setText(newText)
+        end
+    elseif key == "left" then
+        self.cursorPos = math.max(0, self.cursorPos - 1)
+    elseif key == "right" then
+        self.cursorPos = math.min(#self.text, self.cursorPos + 1)
+    elseif key == "home" then
+        self.cursorPos = 0
+    elseif key == "end" then
+        self.cursorPos = #self.text
+    elseif key == "return" or key == "kpenter" then
+        if self.onEnterPressed then
+            self.onEnterPressed(self, self.text)
+        end
+    end
+
+    self.cursorTimer = 0
+    self.cursorVisible = true
+    
+    self:dispatchEvent({ type = "keypressed", key})
+end
+
+function TextEditable:onTouchPressed(e)
+    require("src.ui.utils.DebugConsole").log("text:", e.type
+      )
+    -- Проверяем, попали ли мы по области элемента
+    if e.x >= self.x and e.x <= self.x + self.width and
+       e.y >= self.y and e.y <= self.y + self.height then
+        self:requestFocus()
+        
+        love.keyboard.setTextInput(true) -- Включаем ввод текста (на Android откроет клавиатуру)
+        return true -- событие обработано
+    else
+        return false
+    end
+end
+
+function TextEditable:setFocus(focus)
+    if focus then
+        self:onFocus()
+    else
+        self:onBlur()
+    end
+end
+
+function TextEditable:requestFocus()
+    -- Предположим, что есть менеджер фокусов или просто активируем фокус здесь
+    self:setFocus(true)
+end
+
+-- === Установка нового текста с вызовом callback ===
+function TextEditable:setText(text)
+    self.text = text or ""
+    self.cursorPos = math.min(self.cursorPos, #self.text)
+
+    if self.onTextChanged then
+        self.onTextChanged(self, self.text)
+    end
+end
+
+-- === Получение текущего текста ===
+function TextEditable:getText()
+    return self.text
+end
+
+-- === Обновление курсора (вызывается в love.update) ===
+function TextEditable:update(dt)
+    if self.hasFocus then
+        self.cursorTimer = self.cursorTimer + dt
+        if self.cursorTimer >= self.cursorBlinkTime then
+            self.cursorTimer = self.cursorTimer - self.cursorBlinkTime
+            self.cursorVisible = not self.cursorVisible
+        end
+    end
+end
+
+-- === Отрисовка текста и курсора (вызывается из drawContent или drawSelf) ===
+function TextEditable:drawTextContent()
+    local font = love.graphics.getFont()
+    local displayText = self.text
+    if self.passwordMode then
+        displayText = string.rep("*", #self.text)
+    end
+
+    local textColor = self.textColor
+    local x = self:getPaddingLeft()
+    local y = (self.height - font:getHeight()) / 2
+
+    love.graphics.setFont(font)
+    love.graphics.setColor(textColor)
+
+    if #self.text == 0 and self.placeholder and self.placeholder ~= "" then
+        love.graphics.setColor(self.placeholderColor)
+        love.graphics.print(self.placeholder, x, y)
+    else
+        love.graphics.setColor(textColor)
+        love.graphics.print(displayText, x, y)
+    end
+
+    -- Рисуем курсор
+    if self.hasFocus and self.cursorVisible then
+        local cursorX = x
+        if #displayText > 0 and self.cursorPos > 0 then
+            local part = displayText:sub(1, self.cursorPos)
+            cursorX = x + font:getWidth(part)
+        end
+        love.graphics.setColor(textColor)
+        love.graphics.rectangle("fill", cursorX, y, 1, font:getHeight())
+    end
+end
+
+return TextEditable
+-- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/TextEditable.lua ====
+
+
+
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Visibility.lua ====
 
 local Visibility = {}
@@ -1468,9 +1768,10 @@ return ZIndex
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/Button.lua ====
 
+-- /src/ui/elements/Button.lua
+
 local class = require("lib.middleclass")
 local Element = require("src.ui.core.Element")
-
 local Button = class("Button", Element)
 
 function Button:initialize(options)
@@ -1491,7 +1792,6 @@ function Button:initialize(options)
 
     -- === Отступы ===
     if options then
-        -- Padding
         if options.padding then
             self:setPadding(options.padding)
         else
@@ -1502,8 +1802,6 @@ function Button:initialize(options)
                 options.paddingBottom or self.paddingBottom
             )
         end
-
-        -- Margin
         if options.margin then
             self:setMargin(options.margin)
         else
@@ -1514,8 +1812,6 @@ function Button:initialize(options)
                 options.marginBottom or self.marginBottom
             )
         end
-
-        -- Scissor
         if options.scissor ~= nil then
             self:enableScissor(options.scissor)
         else
@@ -1523,27 +1819,11 @@ function Button:initialize(options)
         end
     end
 
-    -- === События нажатия ===
-    self:addEventListener("touchpressed", function(event)
-        if self:isInside(event.x, event.y) then
-            self.pressed = true
+    -- === Добавляем обработчик клика ===
+    self:addEventListener("click", function()
+        if self.onClick then
+            self.onClick(self)
         end
-        return true -- Захватываем событие
-    end)
-
-    self:addEventListener("touchmoved", function(event)
-        if self.pressed and not self:isInside(event.x, event.y) then
-            self.pressed = false
-        end
-        return false
-    end)
-
-    self:addEventListener("touchreleased", function(event)
-        if self.pressed and self:isInside(event.x, event.y) then
-            if self.onClick then self.onClick(self, event) end
-        end
-        self.pressed = false
-        return false
     end)
 end
 
@@ -1552,7 +1832,7 @@ function Button:drawContent()
     love.graphics.setColor(unpack(self:getStyle("text_color") or {1,1,1,1}))
     love.graphics.printf(
         self.text,
-        0, -- Уже учитываем padding в translate
+        0,
         self.height / 2 - 6,
         self.width,
         "center"
@@ -1566,9 +1846,10 @@ return Button
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/Label.lua ====
 
+-- /src/ui/elements/Label.lua
+
 local class = require("lib.middleclass")
 local Element = require("src.ui.core.Element")
-
 local Label = class("Label", Element)
 
 function Label:initialize(options)
@@ -1579,16 +1860,25 @@ function Label:initialize(options)
     self.text = options.text or ""
     self.font = options.font or love.graphics.getFont()
     self.align = options.align or "left" -- left, center, right
+    self.verticalAlign = options.verticalAlign or "middle" -- top, middle, bottom
     self.wrap = options.wrap or false     -- Перенос текста
     self.limit = options.limit            -- Ширина для переноса
 
     -- === Цвет текста через стиль ===
-    self:setStyle({
-        text_color = options.color or {1, 1, 1, 1} -- Белый по умолчанию
-    })
+    self.textColor = options.color or {1, 1, 1, 1}
+
+    -- === Стили ===
+    if options.backgroundColor then
+        self:setStyle({ background_color = options.backgroundColor })
+    end
 
     -- === Автоматическое обновление размеров ===
     self:autoSize()
+
+    -- === Обработчики событий ===
+    if options.onClick then
+        self:addEventListener("click", function(e) return options.onClick(self, e) end)
+    end
 end
 
 -- === Автоматически вычисляет ширину и высоту под текст ===
@@ -1633,29 +1923,34 @@ function Label:setAlign(align)
     return self
 end
 
--- === Рисование контента (текста) внутри padding'ов ===
+-- === drawContent — рисует внутри padding'а элемента ===
 function Label:drawContent(width, height)
     if #self.text == 0 or not self.font then return end
 
-    local color = self:getStyle("text_color") or {1, 1, 1, 1}
+    local color = self.textColor or self:getStyle("text_color") or {1, 1, 1, 1}
     love.graphics.setFont(self.font)
     love.graphics.setColor(color)
 
-    local x = 0
-    local y = 0
+    local x = self:getPaddingLeft()
+    local y = self:getPaddingTop()
+    local availableWidth = self.width - self:getPaddingX()
 
-    if self.wrap and self.limit then
-        love.graphics.printf(self.text, x, y, self.limit, self.align)
+    if self.wrap and availableWidth > 0 then
+        love.graphics.printf(self.text, x, y, availableWidth, self.align)
     else
         if self.align == "center" then
-            x = width / 2
+            x = self.width / 2
         elseif self.align == "right" then
-            x = width
+            x = self.width - self:getPaddingRight()
         end
 
-        love.graphics.print(self.text, x, y, 0, 1, 1,
-            self.align == "center" and width / 2 or
-            self.align == "right" and width or 0)
+        if self.verticalAlign == "middle" then
+            y = self.height / 2 - self.font:getHeight() / 2
+        elseif self.verticalAlign == "bottom" then
+            y = self.height - self.font:getHeight() - self:getPaddingBottom()
+        end
+
+        love.graphics.print(self.text, x, y)
     end
 end
 
@@ -1666,26 +1961,31 @@ return Label
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/ScrollView.lua ====
 
+-- /src/ui/elements/ScrollView.lua
+
 local class = require("lib.middleclass")
 local Element = require("src.ui.core.Element")
-
 local ScrollView = class("ScrollView", Element)
 
 function ScrollView:initialize(options)
     options = options or {}
     Element.initialize(self, options)
-    self.scissorEnabled = true
 
-    -- === Содержимое прокрутки ===
+    -- === Стилевые настройки из темы или опций ===
+    self.scrollBarSize = options.scrollBarSize or self:getStyle("scrollbar_size", 8)
+    self.scrollBarColor = options.scrollBarColor or self:getStyle("scrollbar_color", {0.9, 0.9, 0.3, 0.6})
+    self.friction = options.friction or self:getStyle("friction", 0.95)
+    self.maxVelocity = options.maxVelocity or self:getStyle("max_velocity", 1200)
+
+    -- === Контент для прокрутки ===
     self.content = Element:new({
         x = 0,
         y = 0,
         width = self.width,
         height = 0,
         scissor = false,
+        interactive = false
     })
-
-    
 
     -- === Позиция прокрутки ===
     self.scrollY = 0
@@ -1693,87 +1993,91 @@ function ScrollView:initialize(options)
     self.scrollX = 0
     self.maxScrollX = 0
 
-    -- === Настройки скроллбара ===
-    self.scrollBarVisible = false
-    self.scrollBarSize = options.scrollBarSize or self:getStyle("scrollbar_size") or 10
-    self.scrollBarColor = options.scrollBarColor or self:getStyle("scrollbar_color") or {0.5, 0.5, 0.5, 0.8}
-    self.scrollBarMargin = options.scrollBarMargin or self:getStyle("scrollbar_margin") or 4
-
-    -- === Физика инерции ===
-    self.friction = options.friction or self:getStyle("friction") or 0.92
-    self.maxVelocity = options.maxVelocity or self:getStyle("max_velocity") or 2000
-
     -- === Переменные для тач-управления ===
     self.touchId = nil
     self.lastTouchY = 0
     self.velocityY = 0
 
-    -- === События ===
-    self:addEventListener("touchpressed", function(e) return self:onTouchPressed(e) end)
-    self:addEventListener("touchmoved", function(e) return self:onTouchMoved(e) end)
-    self:addEventListener("touchreleased", function(e) return self:onTouchReleased(e) end)
+    -- === Добавляем контент как дочерний элемент ===
+    self:addChild(self.content)
 
-    -- === Для драг-н-дропа (если нужно) ===
-    self.content.onDrop = function(target, event)
-        print("Элемент перетащен сюда:", tostring(target))
+    -- === Автообновление размеров ===
+    if options.autoSize ~= false then
+        self:updateContentSize()
     end
-    
-    --self:addChild(self.content) -- Добавляем контент как дочерний элемент
 end
 
--- === Добавление дочерних элементов в content ===
+-- === Добавление дочернего элемента в content ===
 function ScrollView:addChild(child)
     local offsetY = 0
     if #self.content.children > 0 then
         local lastChild = self.content.children[#self.content.children]
         offsetY = lastChild.y + lastChild.height
     end
-
     child.x = self.content:getPaddingLeft() or 0
     child.y = offsetY
     self.content:addChild(child)
-
-    self.content:updateContentSize()
-    self:updateScrollLimits()
+    self:updateContentSize()
 end
 
--- === Удаление дочернего элемента ===
-function ScrollView:removeChild(child)
-    self.content:removeChild(child)
-    self.content:updateContentSize()
-    self:updateScrollLimits()
+-- === Обновление размера контента ===
+function ScrollView:updateContentSize()
+    self.content.contentWidth = 0
+    self.content.contentHeight = 0
+    for _, child in ipairs(self.content.children) do
+        self.content.contentWidth = math.max(self.content.contentWidth, child.x + child.width)
+        self.content.contentHeight = math.max(self.content.contentHeight, child.y + child.height)
+    end
+    self.maxScrollY = math.max(0, (self.content.contentHeight or 0) - (self.height - self.content:getPaddingY()))
 end
 
--- === Обновление ограничений прокрутки ===
-function ScrollView:updateScrollLimits()
-    local padding = self.content:getPaddingY()
-    self.maxScrollY = math.max(0, (self.content.contentHeight or 0) - (self.height - padding))
-    self.scrollY = math.max(0, math.min(self.scrollY, self.maxScrollY))
-    self.scrollBarVisible = self.maxScrollY > 0
-end
-
--- === Логика обновления (для инерции) ===
+-- === Обновление позиции контента при скролле ===
 function ScrollView:update(dt)
     Element.update(self, dt)
 
+    -- Инерция скроллинга
     if not self.touchId and math.abs(self.velocityY) > 1 then
         local delta = self.velocityY * dt
         self.scrollY = math.max(0, math.min(self.maxScrollY, self.scrollY + delta))
         self.velocityY = self.velocityY * self.friction
-
-        -- Границы
-        if self.scrollY < 0 then
-            self.scrollY = 0
-            self.velocityY = 0
-        elseif self.scrollY > self.maxScrollY then
-            self.scrollY = self.maxScrollY
-            self.velocityY = 0
-        end
     end
 end
 
--- === Обработка событий ===
+-- === Рисование контента ===
+function ScrollView:drawContent(width, height)
+    love.graphics.push()
+    love.graphics.translate(0, -self.scrollY)
+    self:applyScissor()
 
+    for _, child in ipairs(self.content.children) do
+        child:draw()
+    end
+
+    self:clearScissor()
+    love.graphics.pop()
+
+    self:drawScrollBar()
+end
+
+-- === Отрисовка скроллбара ===
+function ScrollView:drawScrollBar()
+    if self.maxScrollY == 0 then return end
+
+    local barHeight = math.max(30, self.height * (self.height / (self.content.contentHeight + self.content:getPaddingY())))
+    local scrollAreaHeight = self.height - 4
+    local barPos = 2 + (self.scrollY / self.maxScrollY) * (scrollAreaHeight - barHeight)
+
+    love.graphics.setColor(self.scrollBarColor)
+    love.graphics.rectangle(
+        "fill",
+        self.width - self.scrollBarSize,
+        barPos,
+        self.scrollBarSize,
+        barHeight
+    )
+end
+
+-- === Обработка касаний через InteractiveEvents ===
 function ScrollView:onTouchPressed(event)
     if not self:isInside(event.x, event.y) then return false end
     self.touchId = event.id
@@ -1787,7 +2091,7 @@ function ScrollView:onTouchMoved(event)
         local deltaY = self.lastTouchY - event.y
         self.lastTouchY = event.y
         self.scrollY = math.max(0, math.min(self.maxScrollY, self.scrollY + deltaY))
-        self.velocityY = deltaY * 15
+        self.velocityY = deltaY * self:getStyle("touch_scroll_multiplier", 18)
         return true
     end
     return false
@@ -1801,44 +2105,6 @@ function ScrollView:onTouchReleased(event)
     return false
 end
 
-function ScrollView:drawContent(width, height)
-    love.graphics.push()
-    love.graphics.translate(0, -self.scrollY)
-    
-    -- Применяем scissor один раз для всего контента
-    self:applyScissor()
-    
-    -- Рисуем содержимое
-    for _, child in ipairs(self.content.children) do
-        child:draw()
-    end
-    
-    -- Очищаем scissor после отрисовки всего контента
-    self:clearScissor()
-    
-    love.graphics.pop()
-end
-
--- === Отрисовка скроллбара ===
-function ScrollView:drawScrollBar()
-    if not self.scrollBarVisible or self.maxScrollY <= 0 then return end
-
-    local scrollAreaHeight = self.height - self.scrollBarMargin * 2
-    local scrollBarHeight = math.max(30, scrollAreaHeight * (self.height / (self.content.contentHeight + self.content:getPaddingY())))
-    local scrollBarPos = self.scrollBarMargin + (self.scrollY / self.maxScrollY) * (scrollAreaHeight - scrollBarHeight)
-
-    love.graphics.setColor(self.scrollBarColor)
-    love.graphics.rectangle("fill",
-        self.width - self.scrollBarSize - self.scrollBarMargin,
-        scrollBarPos,
-        self.scrollBarSize,
-        scrollBarHeight
-    )
-end
-
-
--- === drawSelf() наследуется из Element и вызывает drawContent() ===
-
 return ScrollView
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/ScrollView.lua ====
 
@@ -1846,364 +2112,54 @@ return ScrollView
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/UIInputField.lua ====
 
+-- /src/ui/elements/UIInputField.lua
+
 local class = require("lib.middleclass")
+local TextEditable = require("src.ui.core.mixins.TextEditable")
 local Element = require("src.ui.core.Element")
-
 local UIInputField = class("UIInputField", Element)
+UIInputField:mixin(TextEditable)
 
-function UIInputField:initialize(x, y, width, height, options)
-    Element.initialize(self, x, y, width, height)
-    
-    options = options or {}
-    
-    -- Свойства текста
-    self.text = options.text or ""
-    self.placeholder = options.placeholder or ""
-    self.font = options.font or love.graphics.getFont()
-    self.textColor = options.textColor or {1, 1, 1, 1}
-    self.placeholderColor = options.placeholderColor or {0.7, 0.7, 0.7, 1}
-    
-    -- Внешний вид
-    self.backgroundColor = options.backgroundColor or {0.2, 0.2, 0.2, 1}
-    self.borderColor = options.borderColor or {0.5, 0.5, 0.5, 1}
-    self.focusBorderColor = options.focusBorderColor or {0.7, 0.7, 1, 1}
-    self.borderWidth = options.borderWidth or 1
-    self.borderRadius = options.borderRadius or 2
-    self.padding = options.padding or 5
-    
-    -- Состояние
-    self.hasFocus = false
-    self.cursorPos = #self.text
-    self.cursorVisible = true
-    self.cursorBlinkTime = 0.5
-    self.cursorTimer = 0
-    self.passwordMode = options.passwordMode or false
-    self.maxLength = options.maxLength or -1
-    
-    -- Фильтрация ввода
-    self.inputFilter = options.inputFilter -- функция для фильтрации символов
-    
-    -- Callback
-    self.onTextChanged = options.onTextChanged
-    self.onEnterPressed = options.onEnterPressed
-end
+function UIInputField:initialize(options)
+    Element.initialize(self, options)
+    TextEditable.initialize(self, options)
 
-function UIInputField:getText()
-    return self.text
-end
+    self:setStyle({
+        background_color = options.backgroundColor or {0.2, 0.2, 0.2, 1}
+    })
 
-function UIInputField:setText(text)
-    self.text = text or ""
-    self.cursorPos = math.min(self.cursorPos, #self.text)
-    
-    if self.onTextChanged then
-        self.onTextChanged(self, self.text)
-    end
-end
-
-function UIInputField:setPlaceholder(placeholder)
-    self.placeholder = placeholder or ""
-end
-
-function UIInputField:onFocus()
-    self.hasFocus = true
-    self.cursorTimer = 0
-    self.cursorVisible = true
-end
-
-function UIInputField:onBlur()
-    self.hasFocus = false
-end
-
--- Обработка текстового ввода
-function UIInputField:textinput(text)
-    if not self.hasFocus then return end
-    
-    -- Применяем фильтр ввода при необходимости
-    if self.inputFilter and not self.inputFilter(text) then
-        return
-    end
-    
-    -- Проверяем макс. длину
-    if self.maxLength > 0 and #self.text >= self.maxLength then
-        return
-    end
-    
-    -- Добавляем текст в текущую позицию курсора
-    local newText = string.sub(self.text, 1, self.cursorPos) .. text .. string.sub(self.text, self.cursorPos + 1)
-    self:setText(newText)
-    self.cursorPos = self.cursorPos + #text
-end
-
--- Обработка нажатия клавиш
-function UIInputField:keypressed(key, scancode, isrepeat)
-    if not self.hasFocus then return end
-    
-    if key == "backspace" then
-        if self.cursorPos > 0 then
-            local newText = string.sub(self.text, 1, self.cursorPos - 1) .. string.sub(self.text, self.cursorPos + 1)
-            self:setText(newText)
-            self.cursorPos = self.cursorPos - 1
-        end
-    elseif key == "delete" then
-        if self.cursorPos < #self.text then
-            local newText = string.sub(self.text, 1, self.cursorPos) .. string.sub(self.text, self.cursorPos + 2)
-            self:setText(newText)
-        end
-    elseif key == "left" then
-        self.cursorPos = math.max(0, self.cursorPos - 1)
-    elseif key == "right" then
-        self.cursorPos = math.min(#self.text, self.cursorPos + 1)
-    elseif key == "home" then
-        self.cursorPos = 0
-    elseif key == "end" then
-        self.cursorPos = #self.text
-    elseif key == "return" or key == "kpenter" then
-        if self.onEnterPressed then
-            self.onEnterPressed(self, self.text)
-        end
-    end
-    
-    -- Сбрасываем таймер моргания курсора
-    self.cursorTimer = 0
-    self.cursorVisible = true
-end
-
-function UIInputField:onTouchPressed(id, x, y, dx, dy, pressure)
-    if self:isInside(x, y) then
-        self:focus()
-        
-        -- Установка позиции курсора по клику
-        local clickX = x - self.x - self.padding
-        local currentPos = 0
-        local bestDist = math.huge
-        
-        for i = 0, #self.text do
-            local textPart = self.passwordMode and string.rep("*", i) or string.sub(self.text, 1, i)
-            local width = self.font:getWidth(textPart)
-            local dist = math.abs(width - clickX)
-            
-            if dist < bestDist then
-                bestDist = dist
-                currentPos = i
-            end
-        end
-        
-        self.cursorPos = currentPos
+    -- Запрашиваем фокус при касании
+    self:addEventListener("touchpressed", function(e)
+        self:requestFocus()
+        love.keyboard.setTextInput(true)
         return true
-    else
-        if self.hasFocus then
-            self:blur()
-        end
-        return false
-    end
+    end)
+
+    -- Обрабатываем ввод текста и клавиш
+    self:addEventListener("textinput", function(text)
+        self:textinput(text)
+        return true
+    end)
+
+    self:addEventListener("keypressed", function(keyEvent)
+        self:keypressed(keyEvent.key)
+        return true
+    end)
 end
 
-function UIInputField:update(dt)
-    Element.update(self, dt)
-    
-    -- Обновление курсора
-    if self.hasFocus then
-        self.cursorTimer = self.cursorTimer + dt
-        if self.cursorTimer >= self.cursorBlinkTime then
-            self.cursorTimer = self.cursorTimer - self.cursorBlinkTime
-            self.cursorVisible = not self.cursorVisible
-        end
-    end
-end
-
-function UIInputField:draw()
+function UIInputField:drawSelf()
     if not self.visible then return end
-    
-    -- Сохраняем текущие настройки графики
-    local r, g, b, a = love.graphics.getColor()
-    local currentFont = love.graphics.getFont()
-    
-    -- Рисуем фон
-    love.graphics.setColor(unpack(self.backgroundColor))
-    
-    if self.borderRadius > 0 and love.graphics.newCanvas then
-        love.graphics.rectangle("fill", self.x, self.y, self.width, self.height, self.borderRadius, self.borderRadius)
-    else
-        love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
-    end
-    
-    -- Рисуем границу
-    local borderColor = self.hasFocus and self.focusBorderColor or self.borderColor
-    love.graphics.setColor(unpack(borderColor))
-    
-    if self.borderRadius > 0 and love.graphics.newCanvas then
-        love.graphics.rectangle("line", self.x, self.y, self.width, self.height, self.borderRadius, self.borderRadius)
-    else
-        love.graphics.rectangle("line", self.x, self.y, self.width, self.height)
-    end
-    
-    -- Устанавливаем шрифт
-    love.graphics.setFont(self.font)
-    
-    -- Определяем, какой текст отображать
-    local displayText = self.text
-    if self.passwordMode then
-        displayText = string.rep("*", #self.text)
-    end
-    
-    -- Вычисляем область отображения текста
-    local textX = self.x + self.padding
-    local textY = self.y + (self.height - self.font:getHeight()) / 2
-    
-    -- Рисуем текст или плейсхолдер
-    if #self.text > 0 then
-        love.graphics.setColor(unpack(self.textColor))
-        love.graphics.print(displayText, textX, textY)
-    else
-        love.graphics.setColor(unpack(self.placeholderColor))
-        love.graphics.print(self.placeholder, textX, textY)
-    end
-    
-    -- Рисуем курсор, если поле в фокусе
-    if self.hasFocus and self.cursorVisible then
-        local cursorX = textX
-        if #self.text > 0 and self.cursorPos > 0 then
-            local textBeforeCursor = self.passwordMode and string.rep("*", self.cursorPos) or string.sub(self.text, 1, self.cursorPos)
-            cursorX = textX + self.font:getWidth(textBeforeCursor)
-        end
-        
-        love.graphics.setColor(unpack(self.textColor))
-        love.graphics.rectangle("fill", cursorX, textY, 1, self.font:getHeight())
-    end
-    
-    -- Восстанавливаем настройки графики
-    love.graphics.setColor(r, g, b, a)
-    love.graphics.setFont(currentFont)
-    
-    -- Рисуем дочерние элементы
-    for _, child in ipairs(self.children) do
-        if child.draw then
-            child:draw()
-        end
-    end
-end
+    love.graphics.setColor(0.5, 0.5, 0.5, 0.7)
+    love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
 
-function UIInputField:focus()
-    Element.focus(self)
-end
-
-function UIInputField:blur()
-    if self.parent and self.parent.clearFocus then
-        self.parent:clearFocus()
-    end
+    love.graphics.push()
+    love.graphics.translate(self.x, self.y)
+    self:drawTextContent()
+    love.graphics.pop()
 end
 
 return UIInputField
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/UIInputField.lua ====
-
-
-
--- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/UILabel.lua ====
-
-local class = require("lib.middleclass")
-local Element = require("src.ui.core.Element")
-
-local UILabel = class("UILabel", Element)
-
-function UILabel:initialize(x, y, text, options)
-    options = options or {}
-    local width = options.width or 100
-    local height = options.height or 30
-    
-    Element.initialize(self, x, y, width, height)
-    
-    -- Свойства
-    self.text = text or ""
-    self.options = options
-    self.font = options.font or love.graphics.getFont()
-    self.textColor = options.textColor or {1, 1, 1, 1}
-    self.backgroundColor = options.backgroundColor or {0, 0, 0, 0} -- Прозрачный по умолчанию
-    self.textAlign = options.textAlign or "left" -- left, center, right
-    self.verticalAlign = options.verticalAlign or "middle" -- top, middle, bottom
-    self.padding = options.padding or {left = 5, top = 5, right = 5, bottom = 5}
-    
-    -- Если ширина не задана явно, устанавливаем по размеру текста
-    if not options.width then
-        self:updateDimensions()
-    end
-end
-
-function UILabel:setText(text)
-    self.text = text
-    if not self.options.width then
-        self:updateDimensions()
-    end
-end
-
-function UILabel:setFont(font)
-    self.font = font
-    if not self.options.width then
-        self:updateDimensions()
-    end
-end
-
-function UILabel:updateDimensions()
-    if self.font then
-        self.width = self.font:getWidth(self.text) + self.padding.left + self.padding.right
-        self.height = self.font:getHeight() + self.padding.top + self.padding.bottom
-    end
-end
-
-function UILabel:draw()
-    if not self.visible then return end
-    
-    -- Сохраняем текущие настройки графики
-    local r, g, b, a = love.graphics.getColor()
-    local currentFont = love.graphics.getFont()
-    
-    -- Рисуем фон, если он не полностью прозрачный
-    if self.backgroundColor[4] > 0 then
-        love.graphics.setColor(unpack(self.backgroundColor))
-        love.graphics.rectangle("fill", self.x, self.y, self.width, self.height)
-    end
-    
-    -- Устанавливаем шрифт и цвет текста
-    love.graphics.setFont(self.font)
-    love.graphics.setColor(unpack(self.textColor))
-    
-    -- Вычисляем X-координату текста на основе выравнивания
-    local textX = self.x + self.padding.left
-    local textWidth = self.font:getWidth(self.text)
-    
-    if self.textAlign == "center" then
-        textX = self.x + (self.width - textWidth) / 2
-    elseif self.textAlign == "right" then
-        textX = self.x + self.width - textWidth - self.padding.right
-    end
-    
-    -- Вычисляем Y-координату текста на основе вертикального выравнивания
-    local textY = self.y + self.padding.top
-    local textHeight = self.font:getHeight()
-    
-    if self.verticalAlign == "middle" then
-        textY = self.y + (self.height - textHeight) / 2
-    elseif self.verticalAlign == "bottom" then
-        textY = self.y + self.height - textHeight - self.padding.bottom
-    end
-    
-    -- Рисуем текст
-    love.graphics.print(self.text, textX, textY)
-    
-    -- Восстанавливаем настройки графики
-    love.graphics.setColor(r, g, b, a)
-    love.graphics.setFont(currentFont)
-    
-    -- Рисуем дочерние элементы (если есть)
-    for _, child in ipairs(self.children) do
-        if child.draw then
-            child:draw()
-        end
-    end
-end
-
-return UILabel
--- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/elements/UILabel.lua ====
 
 
 

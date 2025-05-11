@@ -1,6 +1,7 @@
+-- /src/ui/elements/Label.lua
+
 local class = require("lib.middleclass")
 local Element = require("src.ui.core.Element")
-
 local Label = class("Label", Element)
 
 function Label:initialize(options)
@@ -11,16 +12,25 @@ function Label:initialize(options)
     self.text = options.text or ""
     self.font = options.font or love.graphics.getFont()
     self.align = options.align or "left" -- left, center, right
+    self.verticalAlign = options.verticalAlign or "middle" -- top, middle, bottom
     self.wrap = options.wrap or false     -- Перенос текста
     self.limit = options.limit            -- Ширина для переноса
 
     -- === Цвет текста через стиль ===
-    self:setStyle({
-        text_color = options.color or {1, 1, 1, 1} -- Белый по умолчанию
-    })
+    self.textColor = options.color or {1, 1, 1, 1}
+
+    -- === Стили ===
+    if options.backgroundColor then
+        self:setStyle({ background_color = options.backgroundColor })
+    end
 
     -- === Автоматическое обновление размеров ===
     self:autoSize()
+
+    -- === Обработчики событий ===
+    if options.onClick then
+        self:addEventListener("click", function(e) return options.onClick(self, e) end)
+    end
 end
 
 -- === Автоматически вычисляет ширину и высоту под текст ===
@@ -65,29 +75,34 @@ function Label:setAlign(align)
     return self
 end
 
--- === Рисование контента (текста) внутри padding'ов ===
+-- === drawContent — рисует внутри padding'а элемента ===
 function Label:drawContent(width, height)
     if #self.text == 0 or not self.font then return end
 
-    local color = self:getStyle("text_color") or {1, 1, 1, 1}
+    local color = self.textColor or self:getStyle("text_color") or {1, 1, 1, 1}
     love.graphics.setFont(self.font)
     love.graphics.setColor(color)
 
-    local x = 0
-    local y = 0
+    local x = self:getPaddingLeft()
+    local y = self:getPaddingTop()
+    local availableWidth = self.width - self:getPaddingX()
 
-    if self.wrap and self.limit then
-        love.graphics.printf(self.text, x, y, self.limit, self.align)
+    if self.wrap and availableWidth > 0 then
+        love.graphics.printf(self.text, x, y, availableWidth, self.align)
     else
         if self.align == "center" then
-            x = width / 2
+            x = self.width / 2
         elseif self.align == "right" then
-            x = width
+            x = self.width - self:getPaddingRight()
         end
 
-        love.graphics.print(self.text, x, y, 0, 1, 1,
-            self.align == "center" and width / 2 or
-            self.align == "right" and width or 0)
+        if self.verticalAlign == "middle" then
+            y = self.height / 2 - self.font:getHeight() / 2
+        elseif self.verticalAlign == "bottom" then
+            y = self.height - self.font:getHeight() - self:getPaddingBottom()
+        end
+
+        love.graphics.print(self.text, x, y)
     end
 end
 

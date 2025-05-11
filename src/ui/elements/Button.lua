@@ -1,6 +1,7 @@
+-- /src/ui/elements/Button.lua
+
 local class = require("lib.middleclass")
 local Element = require("src.ui.core.Element")
-
 local Button = class("Button", Element)
 
 function Button:initialize(options)
@@ -21,7 +22,6 @@ function Button:initialize(options)
 
     -- === Отступы ===
     if options then
-        -- Padding
         if options.padding then
             self:setPadding(options.padding)
         else
@@ -32,8 +32,6 @@ function Button:initialize(options)
                 options.paddingBottom or self.paddingBottom
             )
         end
-
-        -- Margin
         if options.margin then
             self:setMargin(options.margin)
         else
@@ -44,8 +42,6 @@ function Button:initialize(options)
                 options.marginBottom or self.marginBottom
             )
         end
-
-        -- Scissor
         if options.scissor ~= nil then
             self:enableScissor(options.scissor)
         else
@@ -53,27 +49,11 @@ function Button:initialize(options)
         end
     end
 
-    -- === События нажатия ===
-    self:addEventListener("touchpressed", function(event)
-        if self:isInside(event.x, event.y) then
-            self.pressed = true
+    -- === Добавляем обработчик клика ===
+    self:addEventListener("click", function()
+        if self.onClick then
+            self.onClick(self)
         end
-        return true -- Захватываем событие
-    end)
-
-    self:addEventListener("touchmoved", function(event)
-        if self.pressed and not self:isInside(event.x, event.y) then
-            self.pressed = false
-        end
-        return false
-    end)
-
-    self:addEventListener("touchreleased", function(event)
-        if self.pressed and self:isInside(event.x, event.y) then
-            if self.onClick then self.onClick(self, event) end
-        end
-        self.pressed = false
-        return false
     end)
 end
 
@@ -82,7 +62,7 @@ function Button:drawContent()
     love.graphics.setColor(unpack(self:getStyle("text_color") or {1,1,1,1}))
     love.graphics.printf(
         self.text,
-        0, -- Уже учитываем padding в translate
+        0,
         self.height / 2 - 6,
         self.width,
         "center"
