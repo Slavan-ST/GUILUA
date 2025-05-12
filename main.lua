@@ -77,7 +77,7 @@ function love.load()
         height = 40,
         placeholder = "Введите имя...",
         onTextChanged = function(field, text)
-            DebugConsole.log("Текст изменён:", text)
+            --DebugConsole.log("Текст изменён:", text)
         end,
         onEnterPressed = function(field, text)
             DebugConsole.log("Нажат Enter:", text)
