@@ -19,33 +19,36 @@ local DebugConsole = {
 function DebugConsole.log(...)
     local args = {...}
     local text = ""
-    
-    -- Обрабатываем все аргументы
+
     for i, arg in ipairs(args) do
         if i > 1 then
-            text = text .. " " -- Разделитель между аргументами
+            text = text .. " "
         end
         text = text .. tostring(arg)
     end
-    
 
-
+    -- Добавляем сообщение в список консоли
     table.insert(DebugConsole.messages, 1, {
         text = tostring(text),
         time = love.timer.getTime()
     })
-    
-    -- Обрезка старых сообщений
+
+    -- Обрезаем старые сообщения
     if #DebugConsole.messages > DebugConsole.maxLines * 3 then
         table.remove(DebugConsole.messages)
     end
-    
-    -- Автопрокрутка к новым сообщениям
+
+    -- Автопрокрутка
     if DebugConsole.autoScroll then
         DebugConsole.scrollOffset = 0
     end
-    
+
+    -- Выводим в стандартный вывод
     print("[DEBUG] " .. text)
+
+    -- Записываем в файл
+    local logMessage = string.format("[%s] %s\n", os.date("%Y-%m-%d %H:%M:%S"), text)
+    love.filesystem.append("debug_log.txt", logMessage)
 end
 
 -- Отрисовка консоли

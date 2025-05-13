@@ -43,7 +43,9 @@ function love.load()
     end
 
     ui:addElement(scrollView)
-
+    
+    local scrollView2 = scrollView
+    scrollView:addChild(scrollView)
     -- === Кнопка открытия консоли ===
     local consoleBtn = UIButton({
         x = love.graphics.getWidth() - 210,
@@ -293,10 +295,6 @@ return ThemeManager
 
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/UIManager.lua ====
 
-local UIManager = {}
-UIManager.__index = UIManager
-
-
 
 local UIManager = {}
 UIManager.__index = UIManager
@@ -432,7 +430,6 @@ end
 
 function UIManager:handleEvent(event)
     if not event.x or not event.y then
-        require("src.ui.utils.DebugConsole").log("event:", event.type)
         -- События без координат (например, клавиатурные) обрабатываются как раньше
         if self.focused and self.focused:dispatchEvent(event) then
             return true
@@ -1228,7 +1225,7 @@ function Hierarchy:addChild(child)
     if child.parent then
         child.parent:removeChild(child)
     end
-    child.parent = nil
+    child.parent = self
     
     table.insert(self.children, child)
     self:sortChildren()
@@ -1430,6 +1427,7 @@ return Scissorable
 -- НАЧАЛО ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Spacing.lua ====
 
 -- src/ui/core/mixins/Spacing.lua
+
 local Spacing = {}
 
 function Spacing:initialize(options)
@@ -1444,11 +1442,35 @@ function Spacing:initialize(options)
     self.marginBottom = options and options.marginBottom or 0
 end
 
-function Spacing:getPaddingX() return self.paddingLeft + self.paddingRight end
-function Spacing:getPaddingY() return self.paddingTop + self.paddingBottom end
-function Spacing:getMarginX() return self.marginLeft + self.marginRight end
-function Spacing:getMarginY() return self.marginTop + self.marginBottom end
+-- === Padding геттеры ===
+function Spacing:getPaddingLeft()   return self.paddingLeft or 0 end
+function Spacing:getPaddingRight()  return self.paddingRight or 0 end
+function Spacing:getPaddingTop()    return self.paddingTop or 0 end
+function Spacing:getPaddingBottom() return self.paddingBottom or 0 end
 
+function Spacing:getPaddingX()
+    return self:getPaddingLeft() + self:getPaddingRight()
+end
+
+function Spacing:getPaddingY()
+    return self:getPaddingTop() + self:getPaddingBottom()
+end
+
+-- === Margin геттеры ===
+function Spacing:getMarginLeft()   return self.marginLeft or 0 end
+function Spacing:getMarginRight()  return self.marginRight or 0 end
+function Spacing:getMarginTop()    return self.marginTop or 0 end
+function Spacing:getMarginBottom() return self.marginBottom or 0 end
+
+function Spacing:getMarginX()
+    return self:getMarginLeft() + self:getMarginRight()
+end
+
+function Spacing:getMarginY()
+    return self:getMarginTop() + self:getMarginBottom()
+end
+
+-- === setPadding и setMargin (оставляем их для удобства настройки) ===
 function Spacing:setPadding(left, right, top, bottom)
     self.paddingLeft = left or self.paddingLeft
     self.paddingRight = right or self.paddingRight
@@ -1462,22 +1484,6 @@ function Spacing:setMargin(left, right, top, bottom)
     self.marginTop = top or self.marginTop
     self.marginBottom = bottom or self.marginBottom
 end
-
--- src/ui/core/mixins/Spacing.lua
-
-function Spacing:getMarginLeft()   return self.marginLeft or 0 end
-function Spacing:getMarginRight()  return self.marginRight or 0 end
-function Spacing:getMarginTop()    return self.marginTop or 0 end
-function Spacing:getMarginBottom() return self.marginBottom or 0 end
-function Spacing:getMarginX() return self:getMarginLeft() + self:getMarginRight() end
-function Spacing:getMarginY() return self:getMarginTop() + self:getMarginBottom() end
-
-function Spacing:getPaddingLeft()   return self.paddingLeft or 0 end
-function Spacing:getPaddingRight()  return self.paddingRight or 0 end
-function Spacing:getPaddingTop()    return self.paddingTop or 0 end
-function Spacing:getPaddingBottom() return self.paddingBottom or 0 end
-function Spacing:getPaddingX() return self:getPaddingLeft() + self:getPaddingRight() end
-function Spacing:getPaddingY() return self:getPaddingTop() + self:getPaddingBottom() end
 
 return Spacing
 -- КОНЕЦ ФАЙЛА: /storage/emulated/0/lua/GUILUA/src/ui/core/mixins/Spacing.lua ====
@@ -1673,7 +1679,7 @@ function TextEditable:onTouchPressed(event)
     -- Проверяем, находится ли Y внутри области текста
     if  event.y >= self.y + textTop and 
         event.y <= self.y + textBottom then
-        require("src.ui.utils.DebugConsole").log("displayText", utf8.len(self.text))
+        
         local relativeX = event.x - paddingLeft
         self.cursorPos = self:getCursorPositionFromX(relativeX)
     else
@@ -2070,7 +2076,7 @@ function ScrollView:initialize(options)
     self.velocityY = 0
 
     -- === Добавляем контент как дочерний элемент ===
-    --self:addChild(self.content)
+    self:addChild(self.content)
 
     -- === Автообновление размеров ===
     if options.autoSize ~= false then

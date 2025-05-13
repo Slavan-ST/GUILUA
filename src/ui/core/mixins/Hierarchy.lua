@@ -12,7 +12,7 @@ function Hierarchy:addChild(child)
     if child.parent then
         child.parent:removeChild(child)
     end
-    child.parent = nil
+    child.parent = self
     
     table.insert(self.children, child)
     self:sortChildren()

@@ -67,4 +67,19 @@ function Element:update(dt)
     if self.updateAnimations then self:updateAnimations(dt) end
 end
 
+function dumpUI(element, depth)
+    depth = depth or 0
+    local indent = (" "):rep(depth * 2)
+    require("src.ui.utils.DebugConsole").log(indent .. tostring(element))
+    if element.children then
+        for _, child in ipairs(element.children) do
+            dumpUI(child, depth + 1)
+        end
+    end
+end
+
+
+
+
+
 return Element

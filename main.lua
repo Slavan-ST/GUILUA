@@ -39,7 +39,9 @@ function love.load()
     end
 
     ui:addElement(scrollView)
-
+    
+    local scrollView2 = scrollView
+    --scrollView:addChild(scrollView2)
     -- === Кнопка открытия консоли ===
     local consoleBtn = UIButton({
         x = love.graphics.getWidth() - 210,
@@ -87,6 +89,7 @@ function love.load()
     ui:addElement(input)
 
     DebugConsole.log("UI инициализирован через UIManager")
+    DebugConsole.log("save in:", love.filesystem.getSaveDirectory())
 end
 
 function love.update(dt)

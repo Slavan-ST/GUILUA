@@ -36,7 +36,7 @@ function ScrollView:initialize(options)
     self.velocityY = 0
 
     -- === Добавляем контент как дочерний элемент ===
-    --self:addChild(self.content)
+    --Element.addChild(self, self.content)
 
     -- === Автообновление размеров ===
     if options.autoSize ~= false then
