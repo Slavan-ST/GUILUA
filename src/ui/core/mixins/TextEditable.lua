@@ -92,11 +92,12 @@ function TextEditable:keypressed(key)
 
     if key == "backspace" then
         if self.cursorPos > 0 then
-            local before = utf8.sub(self.text, 1, self.cursorPos - 1)
+            local before = utf8.sub(self.text, 1, self.cursorPos  - 1)
             local after = utf8.sub(self.text, self.cursorPos + 1)
             self:setText(before .. after)
-            self.cursorPos = math.max(0, self.cursorPos - 1)
+            self.cursorPos = math.max(0, self.cursorPos)
         end
+
     elseif key == "delete" then
         if self.cursorPos < utf8.len(self.text) then
             local before = utf8.sub(self.text, 1, self.cursorPos)
