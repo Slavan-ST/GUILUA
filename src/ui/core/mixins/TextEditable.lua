@@ -141,7 +141,7 @@ function TextEditable:onTouchPressed(event)
     -- Проверяем, находится ли Y внутри области текста
     if  event.y >= self.y + textTop and 
         event.y <= self.y + textBottom then
-        require("src.ui.utils.DebugConsole").log("displayText", utf8.len(self.text))
+        
         local relativeX = event.x - paddingLeft
         self.cursorPos = self:getCursorPositionFromX(relativeX)
     else
