@@ -1,4 +1,5 @@
 -- main.lua
+
 local UIManager = require("src.ui.core.UIManager")
 local UIButton = require("src.ui.elements.Button")
 local Fonts = require("src.ui.fonts.init")
@@ -10,10 +11,30 @@ local ThemeManager = require("src.ui.core.ThemeManager")
 
 local ui = UIManager.getInstance()
 
+-- === Безопасный вызов с логированием ошибок ===
+local function safeCall(fn)
+    return function(...)
+        local status, err = pcall(fn, ...)
+        if not status then
+            DebugConsole.log("Ошибка в главном цикле: " .. tostring(err))
+        end
+    end
+end
+
 function love.load()
+    safeCall(real_load)()
+end
+
+function real_load()
     -- Загрузка шрифтов
     Fonts.load()
-    love.graphics.setFont(Fonts.default)
+
+    -- Установка шрифта по умолчанию
+    if Fonts.default then
+        love.graphics.setFont(Fonts.default)
+    else
+        DebugConsole.log("Шрифт не загружен!")
+    end
 
     -- Установка темы
     ThemeManager.setTheme("dark")
@@ -39,9 +60,7 @@ function love.load()
     end
 
     ui:addElement(scrollView)
-    
-    local scrollView2 = scrollView
-    --scrollView:addChild(scrollView2)
+
     -- === Кнопка открытия консоли ===
     local consoleBtn = UIButton({
         x = love.graphics.getWidth() - 210,
@@ -93,6 +112,11 @@ function love.load()
 end
 
 function love.update(dt)
+    safeCall(real_update)(dt)
+end
+
+function real_update(dt)
+    local ui = UIManager.getInstance()
     ui:update(dt)
     if DebugConsole.update then
         DebugConsole.update(dt)
@@ -100,52 +124,72 @@ function love.update(dt)
 end
 
 function love.draw()
-    -- love.graphics.clear(0.1, 0.1, 0.15)
+    safeCall(real_draw)()
+end
+
+function real_draw()
+    love.graphics.clear(0.1, 0.1, 0.15)
+    local ui = UIManager.getInstance()
     ui:draw()
     DebugConsole.draw()
 end
 
 -- === Обработчики событий ===
 function love.touchpressed(id, x, y, dx, dy, pressure)
-    ui:handleEvent({
-        type = "touchpressed",
-        id = id,
-        x = x,
-        y = y,
-        dx = dx,
-        dy = dy,
-        pressure = pressure
-    })
+    safeCall(function()
+        local ui = UIManager.getInstance()
+        ui:handleEvent({
+            type = "touchpressed",
+            id = id,
+            x = x,
+            y = y,
+            dx = dx,
+            dy = dy,
+            pressure = pressure
+        })
+    end)()
 end
 
 function love.touchreleased(id, x, y, dx, dy, pressure)
-    ui:handleEvent({
-        type = "touchreleased",
-        id = id,
-        x = x,
-        y = y,
-        dx = dx,
-        dy = dy,
-        pressure = pressure
-    })
+    safeCall(function()
+        local ui = UIManager.getInstance()
+        ui:handleEvent({
+            type = "touchreleased",
+            id = id,
+            x = x,
+            y = y,
+            dx = dx,
+            dy = dy,
+            pressure = pressure
+        })
+    end)()
 end
 
 function love.touchmoved(id, x, y, dx, dy, pressure)
-    ui:handleEvent({
-        type = "touchmoved",
-        id = id,
-        x = x,
-        y = y,
-        dx = dx,
-        dy = dy,
-        pressure = pressure
-    })
+    safeCall(function()
+        local ui = UIManager.getInstance()
+        ui:handleEvent({
+            type = "touchmoved",
+            id = id,
+            x = x,
+            y = y,
+            dx = dx,
+            dy = dy,
+            pressure = pressure
+        })
+    end)()
 end
 
 function love.textinput(text)
-    ui:handleEvent({ type = "textinput", text = text })
+    safeCall(function()
+        local ui = UIManager.getInstance()
+        ui:handleEvent({ type = "textinput", text = text })
+    end)()
 end
 
 function love.keypressed(key, scancode, isrepeat)
-    ui:handleEvent({ type = "keypressed", key = key, scancode = scancode, isrepeat = isrepeat })
+    safeCall(function()
+        local ui = UIManager.getInstance()
+        ui:handleEvent({ type = "keypressed", key = key, scancode = scancode, isrepeat = isrepeat })
+    end)()
 end
